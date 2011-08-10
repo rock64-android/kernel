@@ -1,20 +1,7 @@
 /*
  $License:
     Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+ $
  */
 
 /**
@@ -74,7 +61,7 @@ static int bma150_resume(void *mlsl_handle,
 	result =
 	    MLSLSerialWriteSingle(mlsl_handle, pdata->address, 0x0a, 0x02);
 	ERROR_CHECK(result);
-	MLOSSleep(3);
+	MLOSSleep(10);
 
 	result =
 	    MLSLSerialRead(mlsl_handle, pdata->address, 0x14, 1, &reg);
@@ -108,10 +95,7 @@ static int bma150_read(void *mlsl_handle,
 		       struct ext_slave_platform_data *pdata,
 		       unsigned char *data)
 {
-	int result;
-	result = MLSLSerialRead(mlsl_handle, pdata->address,
-				slave->reg, slave->len, data);
-	return result;
+	return ML_ERROR_FEATURE_NOT_IMPLEMENTED;
 }
 
 static struct ext_slave_descr bma150_descr = {
@@ -121,7 +105,6 @@ static struct ext_slave_descr bma150_descr = {
 	/*.resume           = */ bma150_resume,
 	/*.read             = */ bma150_read,
 	/*.config           = */ NULL,
-	/*.get_config       = */ NULL,
 	/*.name             = */ "bma150",
 	/*.type             = */ EXT_SLAVE_TYPE_ACCELEROMETER,
 	/*.id               = */ ACCEL_ID_BMA150,

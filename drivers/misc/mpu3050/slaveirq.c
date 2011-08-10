@@ -1,20 +1,7 @@
 /*
  $License:
     Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+ $
  */
 #include <linux/interrupt.h>
 #include <linux/module.h>
@@ -28,6 +15,8 @@
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <linux/poll.h>
+#include <linux/gpio.h>
+#include <mach/gpio.h>
 
 #include <linux/errno.h>
 #include <linux/fs.h>
@@ -36,20 +25,19 @@
 #include <linux/wait.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
-#include <linux/wait.h>
-#include <linux/slab.h>
 
 #include "mpu.h"
 #include "slaveirq.h"
 #include "mldl_cfg.h"
 #include "mpu-i2c.h"
-
+#include <linux/wait.h>
+#include <linux/delay.h>
 /* function which gets slave data and sends it to SLAVE */
 
 struct slaveirq_dev_data {
 	struct miscdevice dev;
 	struct i2c_client *slave_client;
-	struct mpuirq_data data;
+	struct irq_data data;
 	wait_queue_head_t slaveirq_wait;
 	int irq;
 	int pid;
@@ -89,9 +77,7 @@ static ssize_t slaveirq_read(struct file *file,
 	struct slaveirq_dev_data *data =
 		container_of(file->private_data, struct slaveirq_dev_data, dev);
 
-	if (!data->data_ready &&
-		data->timeout &&
-		!(file->f_flags & O_NONBLOCK)) {
+	if (!data->data_ready) {
 		wait_event_interruptible_timeout(data->slaveirq_wait,
 						 data->data_ready,
 						 data->timeout);
@@ -114,8 +100,7 @@ static ssize_t slaveirq_read(struct file *file,
 	return len;
 }
 
-static unsigned int slaveirq_poll(struct file *file,
-				struct poll_table_struct *poll)
+unsigned int slaveirq_poll(struct file *file, struct poll_table_struct *poll)
 {
 	int mask = 0;
 	struct slaveirq_dev_data *data =
@@ -171,14 +156,17 @@ static irqreturn_t slaveirq_handler(int irq, void *dev_id)
 	data->data.interruptcount++;
 
 	/* wake up (unblock) for reading data from userspace */
-	data->data_ready = 1;
+	/* and ignore first interrupt generated in module init */
+	if (data->data.interruptcount > 1) {
+		data->data_ready = 1;
 
-	do_gettimeofday(&irqtime);
-	data->data.irqtime = (((long long) irqtime.tv_sec) << 32);
-	data->data.irqtime += irqtime.tv_usec;
-	data->data.data_type |= 1;
+		do_gettimeofday(&irqtime);
+		data->data.irqtime = (((long long) irqtime.tv_sec) << 32);
+		data->data.irqtime += irqtime.tv_usec;
+		data->data.data_type |= 1;
 
-	wake_up_interruptible(&data->slaveirq_wait);
+		wake_up_interruptible(&data->slaveirq_wait);
+	}
 
 	return IRQ_HANDLED;
 
@@ -225,10 +213,24 @@ int slaveirq_init(struct i2c_adapter *slave_adapter,
 	data->data_ready = 0;
 	data->timeout = 0;
 
-	init_waitqueue_head(&data->slaveirq_wait);
-
-	res = request_irq(data->irq, slaveirq_handler, IRQF_TRIGGER_RISING,
-			  data->dev.name, data);
+	/* mpu irq register xxm*/
+	res = gpio_request(data->irq, name);
+	if(res)
+	{
+		printk("failed to request %s GPIO %d\n",			
+					name,data->irq);
+		return res;
+	}
+	res = gpio_direction_input(data->irq);
+	if(res)
+	{
+		printk("failed to set %s GPIO input\n",name);
+		return res;
+	}
+	printk("%s registing irq  == %d \r\n",name,gpio_to_irq(data->irq));
+	//gpio_pull_updown(data->irq, GPIOPullUp);
+	//gpio_set_value(data->irq,GPIO_HIGH);
+	res = request_irq(gpio_to_irq(data->irq), slaveirq_handler, IRQF_TRIGGER_FALLING,data->dev.name, data);
 
 	if (res) {
 		dev_err(&slave_adapter->dev,
@@ -245,6 +247,7 @@ int slaveirq_init(struct i2c_adapter *slave_adapter,
 		goto out_misc_register;
 	}
 
+	init_waitqueue_head(&data->slaveirq_wait);
 	return res;
 
 out_misc_register:
