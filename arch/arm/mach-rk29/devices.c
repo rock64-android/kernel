@@ -729,7 +729,7 @@ struct platform_device android_usb_device = {
 
 /********************usb*********************/
 struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns		= 2,
+	.nluns		= 1, // For phone,just a disk only, changed by phc,20110816
 	.vendor		= "RockChip",
 	.product	= "rk29 sdk",
 	.release	= 0x0100,
