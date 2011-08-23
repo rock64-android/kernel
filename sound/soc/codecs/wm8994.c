@@ -984,6 +984,9 @@ void AP_to_speakers(void)
 #ifndef PCM_BB
 void handsetMIC_to_baseband_to_headset(void)
 {//
+	struct wm8994_priv *wm8994 = wm8994_codec->private_data;
+	struct wm8994_pdata *pdata = wm8994->pdata;
+	
 	DBG("%s::%d\n",__FUNCTION__,__LINE__);
 
 	if(wm8994_current_mode == wm8994_handsetMIC_to_baseband_to_headset)return;
@@ -1000,8 +1003,17 @@ void handsetMIC_to_baseband_to_headset(void)
 //path
 	wm8994_write(0x28,  0x0030); //IN1LN_TO_IN1L IN1LP_TO_IN1L
 	wm8994_write(0x34,  0x0002); //IN1L_TO_LINEOUT1P	
-	wm8994_write(0x2D,  0x0003);  //bit 1 IN2LP_TO_MIXOUTL bit 0 DAC1L_TO_MIXOUTL   
-	wm8994_write(0x2E,  0x0003);  //bit 1 IN2RP_TO_MIXOUTR bit 0 DAC1R_TO_MIXOUTL
+	if(pdata->BB_input_diff == 1)
+	{
+		wm8994_write(0x2B,  0x0005);
+		wm8994_write(0x2D,  0x0041);    
+		wm8994_write(0x2E,  0x0081);  		
+	}
+	else
+	{
+		wm8994_write(0x2D,  0x0003);  //bit 1 IN2LP_TO_MIXOUTL bit 0 DAC1L_TO_MIXOUTL   
+		wm8994_write(0x2E,  0x0003);  //bit 1 IN2RP_TO_MIXOUTR bit 0 DAC1R_TO_MIXOUTL
+	}
 	wm8994_write(0x60,  0x0022);
 	wm8994_write(0x60,  0x00EE);
 	wm8994_write(0x420, 0x0000);
@@ -1026,6 +1038,9 @@ void handsetMIC_to_baseband_to_headset(void)
 
 void mainMIC_to_baseband_to_headset(void)
 {//
+	struct wm8994_priv *wm8994 = wm8994_codec->private_data;
+	struct wm8994_pdata *pdata = wm8994->pdata;
+	
 	DBG("%s::%d\n",__FUNCTION__,__LINE__);
 
 	if(wm8994_current_mode == wm8994_mainMIC_to_baseband_to_headset)return;
@@ -1042,8 +1057,17 @@ void mainMIC_to_baseband_to_headset(void)
 //path
 	wm8994_write(0x28,  0x0003);  //IN1RN_TO_IN1R IN1RP_TO_IN1R
 	wm8994_write(0x34,  0x0004);  //IN1R_TO_LINEOUT1P	
-	wm8994_write(0x2D,  0x0003);  //bit 1 IN2LP_TO_MIXOUTL bit 0 DAC1L_TO_MIXOUTL   
-	wm8994_write(0x2E,  0x0003);  //bit 1 IN2RP_TO_MIXOUTR bit 0 DAC1R_TO_MIXOUTL
+	if(pdata->BB_input_diff == 1)
+	{
+		wm8994_write(0x2B,  0x0005);
+		wm8994_write(0x2D,  0x0041);    
+		wm8994_write(0x2E,  0x0081);  		
+	}
+	else
+	{
+		wm8994_write(0x2D,  0x0003);  //bit 1 IN2LP_TO_MIXOUTL bit 0 DAC1L_TO_MIXOUTL   
+		wm8994_write(0x2E,  0x0003);  //bit 1 IN2RP_TO_MIXOUTR bit 0 DAC1R_TO_MIXOUTL
+	}
 	wm8994_write(0x36,  0x0003);
 	wm8994_write(0x60,  0x0022);
 	wm8994_write(0x60,  0x00EE);
@@ -1059,7 +1083,7 @@ void mainMIC_to_baseband_to_headset(void)
 //power
 	wm8994_write(0x03,  0x3030);
 	wm8994_write(0x05,  0x0303);
-	wm8994_write(0x02,  0x6210);
+	wm8994_write(0x02,  0x6250);
 	wm8994_write(0x01,  0x0303);
 	msleep(50);
 	wm8994_write(0x01,  0x0333);	
@@ -1656,6 +1680,7 @@ int snd_soc_put_route(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct wm8994_priv *wm8994 = wm8994_codec->private_data;
+	struct wm8994_pdata *pdata = wm8994->pdata;
 	char route = kcontrol->private_value & 0xff;
 	char last_route = wm8994->kcontrol.private_value & 0xff;
 	wake_lock(&wm8994->wm8994_on_wake);
@@ -1671,28 +1696,40 @@ int snd_soc_put_route(struct snd_kcontrol *kcontrol,
 			PA_ctrl(GPIO_LOW);
 			break;
 	}
+	printk("%s,route=%d\n",__FUNCTION__,route);
 	//set rount
 	switch(route)
 	{
 		case SPEAKER_NORMAL: 						//AP-> 8994Codec -> Speaker
 		case SPEAKER_RINGTONE:			
 		case EARPIECE_RINGTONE:	
-			AP_to_speakers();
+			if(pdata->phone_pad == 1)
+				AP_to_headset();
+			else
+				AP_to_speakers();
 			break;
 		case SPEAKER_INCALL: 						//BB-> 8994Codec -> Speaker
-			mainMIC_to_baseband_to_speakers();
+			if(pdata->phone_pad == 1)
+				mainMIC_to_baseband_to_headset();
+			else
+				mainMIC_to_baseband_to_speakers();
 			break;					
 		case HEADSET_NORMAL:						//AP-> 8994Codec -> Headset
 			AP_to_headset();
 			break;
 		case HEADSET_INCALL:						//AP-> 8994Codec -> Headset
+#ifdef CONFIG_RK_HEADSET_DET		
 			if(Headset_isMic())
 				handsetMIC_to_baseband_to_headset();
 			else
+#endif				
 				mainMIC_to_baseband_to_headset();
 			break;	    
 		case EARPIECE_INCALL:						//BB-> 8994Codec -> EARPIECE
-			mainMIC_to_baseband_to_earpiece();
+			if(pdata->phone_pad == 1)
+				mainMIC_to_baseband_to_headset();
+			else
+				mainMIC_to_baseband_to_earpiece();
 			break;
 		case EARPIECE_NORMAL:						//BB-> 8994Codec -> EARPIECE
 			switch(wm8994_current_mode)
@@ -1702,7 +1739,10 @@ int snd_soc_put_route(struct snd_kcontrol *kcontrol,
 					AP_to_headset();
 					break;
 				default:
-					AP_to_speakers();	
+					if(pdata->phone_pad == 1)
+						AP_to_headset();
+					else
+						AP_to_speakers();	
 					break;
 			}
 			break;   	
@@ -1755,6 +1795,13 @@ int snd_soc_put_route(struct snd_kcontrol *kcontrol,
 		case HEADSET_RINGTONE:		
 			msleep(50);
 			PA_ctrl(GPIO_HIGH);				
+			break;
+		case EARPIECE_INCALL:
+			if(pdata->phone_pad == 1)
+			{
+				msleep(50);
+				PA_ctrl(GPIO_HIGH);				
+			}
 			break;
 		default: 		
 			break;
