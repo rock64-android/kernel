@@ -270,6 +270,8 @@ static struct wake_lock idlelock; /* only for fb */
 static bool has_set_rotate; 
 static u32 last_yuv_phy[2] = {0,0};
 #endif
+int fb0_first_buff_bits = 32;
+int fb0_second_buff_bits = 32;
 
 int mcu_do_refresh(struct rk29fb_inf *inf)
 {
@@ -1368,6 +1370,11 @@ static int fb0_set_par(struct fb_info *info)
     {
     case 16:    // rgb565
         par->format = 1;
+         if( ypos_virtual == 0)
+            fb0_first_buff_bits = 16;
+        else
+            fb0_second_buff_bits = 16;
+
         //fix->line_length = 2 * xres_virtual;
         fix->line_length = (inf->fb0_color_deepth ? 4:2) * xres_virtual;   //32bit and 16bit change
 
@@ -1381,6 +1388,10 @@ static int fb0_set_par(struct fb_info *info)
     case 32:    // rgb888
     default:
         par->format = 0;
+         if( ypos_virtual == 0)
+            fb0_first_buff_bits = 32;
+        else
+            fb0_second_buff_bits = 32;
         fix->line_length = 4 * xres_virtual;
         #ifdef CONFIG_FB_SCALING_OSD
         dstoffset = ((ypos_virtual*screen->y_res/var->yres) *screen->x_res + (xpos_virtual*screen->x_res)/var->xres )*4;
@@ -1577,6 +1588,17 @@ static int fb0_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
         inf->fb0_color_deepth = arg;
 
 	    break;
+	case FBIOGET_16OR32:
+	    return  inf->fb0_color_deepth;
+	case FBIOGET_IDLEFBUff_16OR32:
+        if(info->var.yoffset == 0)
+        {
+            return fb0_second_buff_bits;
+        }
+        else
+        {
+            return fb0_first_buff_bits;
+        }
 	case FBIOPUT_FBPHYADD:
         return info->fix.smem_start;
     case FBIOGET_OVERLAY_STATE:
