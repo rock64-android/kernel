@@ -362,6 +362,13 @@ static int kxtf9_suspend(void *mlsl_handle,
 				KXTF9_INT_REL, 1, &data);
 	ERROR_CHECK(result);
 
+	/* force kxtf9 goto stand-by mode, add by lyx */
+#if 1
+	result = MLSLSerialWriteSingle(mlsl_handle, pdata->address,
+				KXTF9_CTRL_REG1, 0x00);
+	ERROR_CHECK(result);
+#endif
+
 	return result;
 }
 
