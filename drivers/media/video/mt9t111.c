@@ -8205,10 +8205,6 @@ sensor_video_probe_err:
 
     return ret;
 }
-int sensor_reinit_cb(void *arg)
-{
-        
-}
 static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	struct i2c_client *client = sd->priv;
@@ -8259,13 +8255,7 @@ static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
         	}
             #endif
 			break;
-		}
-        case RK29_CAM_SUBDEV_CB_REGISTER:
-        {
-           //icd_cb = (rk29_camera_sensor_cb_s*)(arg);
-           //icd_cb->sensor_reinit_cb = sensor_reinit_cb;
-           break;    
-        }
+		}        
 		default:
 		{
 			SENSOR_TR("%s %s cmd(0x%x) is unknown !\n",SENSOR_NAME_STRING(),__FUNCTION__,cmd);
