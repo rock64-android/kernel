@@ -43,8 +43,8 @@
 #define V_VD			800//480
 #define V_FP			4
 
-#define LCD_WIDTH       480    //need modify
-#define LCD_HEIGHT      800
+#define LCD_WIDTH       46    //Length unit : mm
+#define LCD_HEIGHT      76    //caijq@rock-chips.com  
 
 /* Other */
 #define DCLK_POL		1             //0 
