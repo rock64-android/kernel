@@ -216,6 +216,10 @@ config RK29_SPI_INSRAM
 	depends on REGULATOR_WM831X
 	default ns
 
+config RK29_CHARGE_EARLYSUSPEND
+	bool "Support charge in low power"
+	default n
+
 config RK29_PWM_INSRAM
 	tristate "Support pwm control interface"
 	depends on RK29_PWM_REGULATOR

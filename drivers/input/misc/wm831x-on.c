@@ -183,7 +183,8 @@ static irqreturn_t wm831x_on_irq(int irq, void *data)
 
 #else
 
-static irqreturn_t wm831x_on_irq(int irq, void *data)
+
+irqreturn_t wm831x_on_irq(int irq, void *data)
 {
 	struct wm831x_on *wm831x_on = data;
 	struct wm831x *wm831x = wm831x_on->wm831x;

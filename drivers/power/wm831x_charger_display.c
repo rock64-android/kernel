@@ -38,7 +38,7 @@
 #include <linux/mfd/wm831x/irq.h>
 #include <linux/power_supply.h>
 
-
+#include <linux/earlysuspend.h>
 #define READ_ON_PIN_CNT 20/*11*/
 #define BACKLIGHT_CNT	2
 #define OPEN_CNT		18
@@ -105,6 +105,70 @@ struct wm831x_chg {
 	int flag_suspend;
 	
 };
+/******************************************************************/
+#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+void rk29_pm_charge(void);
+
+static DEFINE_MUTEX(power_suspend_lock);
+
+static struct early_suspend suspend_battery = {
+
+	.level = -0xff,
+	.suspend = NULL,
+	.resume = NULL,
+};
+
+
+void charge_earlysuspend_enter(int status) //xsf
+{
+
+#ifdef CONFIG_HAS_EARLYSUSPEND  
+
+	struct early_suspend *pos;
+	//struct early_suspend *earlysuspend_head;
+	struct early_suspend *earlysuspend_temp;
+	struct list_head *list_head;
+	struct list_head *list_temp;
+
+
+	mutex_lock(&power_suspend_lock);
+
+	//earlysuspend_head = &suspend_battery;
+	earlysuspend_temp = &suspend_battery;
+	list_head =  earlysuspend_temp->link.prev;
+
+	if(status == 0)
+	{
+		list_for_each_entry(pos, list_head, link)
+		{
+			//printk("earlysuspend---\n");
+			if (pos->suspend != NULL)
+				pos->suspend(pos);
+		}	
+	}
+	
+	if(status == 1)
+	{
+		list_for_each_entry_reverse(pos, list_head, link)
+		{
+			//printk("latereusme---\n");
+			if (pos->resume != NULL)
+				pos->resume(pos);
+		}	
+	}
+
+	mutex_unlock(&power_suspend_lock);
+#endif
+
+}
+
+#else
+void charge_earlysuspend_enter(int status)
+{
+
+}
+#endif
+/***************************************************************/
 
 static int charger_logo_display(struct linux_logo *logo)
 {
@@ -112,11 +176,40 @@ static int charger_logo_display(struct linux_logo *logo)
 	fb_show_logo(g_fb0_inf, 0);
 	return 0;
 }
-
+//int rk29_charge_judge(void);
+struct wm831x_chg wm831x_suspend_chg;
+static int wm831x_read_on_pin_status(struct wm831x_chg *wm831x_chg);
 static int charger_backlight_ctrl(int open)
 {
 	DBG("%s:open=%d\n",__FUNCTION__,open);
+	int ret;
+
+#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+
+	rk29_backlight_ctrl(0);
+	charge_earlysuspend_enter(0); 
+	while(1)
+	{
+		local_irq_disable();
+		rk29_pm_charge();
+
+		ret = wm831x_read_on_pin_status(&wm831x_suspend_chg);
+		//if((rk29_charge_judge() &&(0x01000000)))
+		if(ret)
+		{	
+			local_irq_enable();
+			break;
+		}
+		else
+			local_irq_enable();
+	}
+	charge_earlysuspend_enter(1); //xsf
+	ret = rk29_backlight_ctrl(1);
+
+	return ret;
+#else
 	return rk29_backlight_ctrl(open);
+#endif
 }
 
 static int wm831x_read_on_pin_status(struct wm831x_chg *wm831x_chg)
@@ -279,7 +372,7 @@ static int wm831x_check_on_pin(struct wm831x_chg *wm831x_chg)
 		if(wm831x_chg->cnt_on >= 1)
 		{
 			wm831x_chg->flag_bl = !wm831x_chg->flag_bl;
-			charger_backlight_ctrl(wm831x_chg->flag_bl);			
+			charger_backlight_ctrl(wm831x_chg->flag_bl);
 			wm831x_chg->cnt_on = 0;	
 			if(wm831x_chg->flag_bl)
 			{
@@ -297,6 +390,9 @@ static int rk29_charger_display(struct wm831x_chg *wm831x_chg)
 	int status;
 	struct linux_logo* chargerlogo[8];
 	int ret,i;
+	//wm831x_suspend_chg.wm831x = wm831x_chg->wm831x;
+	wm831x_suspend_chg = *wm831x_chg;
+	int count = 0;
 	
 	wm831x_chg->flag_chg = wm831x_read_chg_status(wm831x_chg);
 	if(!wm831x_chg->flag_chg)
@@ -320,9 +416,12 @@ static int rk29_charger_display(struct wm831x_chg *wm831x_chg)
 				wm831x_chg->flag_chg = wm831x_read_chg_status(wm831x_chg);
 				if(!wm831x_chg->flag_chg)
 				kernel_power_off();
+			#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+				ret = charger_logo_display(chargerlogo[i]);
+			#else
 				if(wm831x_chg->flag_bl != 0)
 				ret = charger_logo_display(chargerlogo[i]);
-
+			#endif
 				DBG("%s:i=%d\n",__FUNCTION__,i);
 
 				msleep(200);	
@@ -335,8 +434,13 @@ static int rk29_charger_display(struct wm831x_chg *wm831x_chg)
 		}
 		else if(status == BAT_DISCHARGING)
 		{
+
+		#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+			charger_logo_display(chargerlogo[7]);
+		#else
 			if(wm831x_chg->flag_bl != 0)
 			charger_logo_display(chargerlogo[7]);
+		#endif	
 			msleep(200);
 			wm831x_check_on_pin(wm831x_chg);
 			msleep(200);
@@ -374,11 +478,26 @@ static int rk29_charger_display(struct wm831x_chg *wm831x_chg)
 	return 0;
 
 }
+int charge_status;
+static irqreturn_t wm831x_charge_irq(int irq, void *data)
+{
+
+	printk("wm831x_charge_irqxxaddxsf\n");
+	return IRQ_HANDLED;
+
+
+}
+extern struct wm831x_on *g_wm831x_on;
+ irqreturn_t wm831x_on_irq(int irq, void *data);
 
 static int __devinit wm831x_chg_probe(struct platform_device *pdev)
 {
 	struct wm831x *wm831x = dev_get_drvdata(pdev->dev.parent);;
 	struct wm831x_chg *wm831x_chg;
+	
+//	struct wm831x_on *wm831x_on = container_of(wm831x,struct wm831x_on,*(wm831x));
+	
+	
 	int ret;
 	
 	wm831x_chg = kzalloc(sizeof(struct wm831x_chg), GFP_KERNEL);
@@ -386,6 +505,7 @@ static int __devinit wm831x_chg_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Can't allocate data\n");
 		return -ENOMEM;
 	}
+	charge_status = 1;
 	printk("%s:start\n",__FUNCTION__);
 	wm831x_chg->wm831x = wm831x;
 	wm831x_chg->flag_chg = 0;
@@ -393,16 +513,37 @@ static int __devinit wm831x_chg_probe(struct platform_device *pdev)
 	wm831x_chg->flag_bl = 1;
 	wm831x_chg->cnt_on = 0;
 	wm831x_chg->flag_suspend = 0;
-	
 	platform_set_drvdata(pdev, wm831x_chg);
+
+#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+#ifdef CONFIG_HAS_EARLYSUSPEND  
+	register_early_suspend(&suspend_battery);//xsf
+#endif
+	wm831x_chg->flag_chg = wm831x_read_chg_status(wm831x_chg);
+	if(wm831x_chg->flag_chg != 0)
+	{
+		free_irq(wm831x_chg->wm831x->irq_base + WM831X_IRQ_ON,g_wm831x_on);
+		request_threaded_irq(wm831x_chg->wm831x->irq_base + WM831X_IRQ_ON, 
+						NULL, wm831x_charge_irq,IRQF_TRIGGER_RISING, "wm831x_charge",
+					   wm831x_chg);
+
+		ret = rk29_charger_display(wm831x_chg);
+		
+
+		free_irq(wm831x_chg->wm831x->irq_base + WM831X_IRQ_ON,wm831x_chg);	
+		request_threaded_irq(wm831x_chg->wm831x->irq_base + WM831X_IRQ_ON,
+			NULL, wm831x_on_irq,IRQF_TRIGGER_RISING, "wm831x_on",  g_wm831x_on);
+	}
+#else
 	disable_irq_nosync(wm831x_chg->wm831x->irq_base + WM831X_IRQ_ON);
 	ret = rk29_charger_display(wm831x_chg);
 	enable_irq(wm831x_chg->wm831x->irq_base + WM831X_IRQ_ON);
+#endif
 	wm831x_chg->flag_chg = 0;
 	wm831x_chg->flag_bl = 1;
 	wm831x_chg->cnt_on = 0;
 	wm831x_chg->flag_suspend = 0;
-
+	charge_status = 0;
 	printk("%s:exit\n",__FUNCTION__);
 	return 0;
 
