@@ -13,6 +13,7 @@
 #include <linux/miscdevice.h>
 #include <mach/iomux.h>
 #include <mach/gpio.h>
+#include <asm/gpio.h>
 #include <linux/delay.h>
 #include <linux/poll.h>
 #include <linux/wait.h>
@@ -216,6 +217,8 @@ int mu509_suspend(struct platform_device *pdev)
 	do_wakeup_irq = 1;
 	//MODEMDBG("-------------%s\n",__FUNCTION__);
 	ap_wakeup_bp(pdev, 1);
+	rk29_mux_api_set(GPIO1C1_UART0RTSN_SDMMC1WRITEPRT_NAME, GPIO1H_GPIO1C1);
+	//gpio_direction_output(RK29_PIN1_PC1, 1);
 	return 0;
 }
 
@@ -223,6 +226,7 @@ int mu509_resume(struct platform_device *pdev)
 {
 	//MODEMDBG("-------------%s\n",__FUNCTION__);
 	ap_wakeup_bp(pdev, 0);
+	rk29_mux_api_set(GPIO1C1_UART0RTSN_SDMMC1WRITEPRT_NAME, GPIO1H_UART0_RTS_N);
 	return 0;
 }
 
