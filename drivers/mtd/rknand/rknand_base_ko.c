@@ -25,7 +25,7 @@
 
 
 #define DRIVER_NAME	"rk29xxnand"
-const char rknand_base_version[] = "rknand_base.c version: 4.26 20110610";
+const char rknand_base_version[] = "rknand_base.c version: 4.30 20110826";
 #define NAND_DEBUG_LEVEL0 0
 #define NAND_DEBUG_LEVEL1 1
 #define NAND_DEBUG_LEVEL2 2
@@ -201,6 +201,31 @@ char GetChipSectorInfo(char * pbuf)
     return 0;
 }
 
+int  GetParamterInfo(char * pbuf , int len)
+{
+    int ret = -1;
+	int sector = (len)>>9;
+	int LBA = 0;
+	if(sector && gpNandInfo->ftl_read)
+	{
+		ret = gpNandInfo->ftl_read(LBA, sector, pbuf);
+	}
+	return ret?-1:(sector<<9);
+}
+
+int  GetflashDataByLba(int lba,char * pbuf , int len)
+{
+    int ret = -1;
+	int sector = (len)>>9;
+	int LBA = lba;
+	if(sector && gpNandInfo->ftl_read)
+	{
+		ret = gpNandInfo->ftl_read(LBA, sector, pbuf);
+	}
+	return ret?-1:(sector<<9);
+}
+
+
 static int rk28xxnand_block_isbad(struct mtd_info *mtd, loff_t ofs)
 {
 	return 0;
@@ -333,7 +358,7 @@ static int rknand_probe(struct platform_device *pdev)
     memset(gpNandInfo,0,sizeof(struct rknand_info));
 
     gpNandInfo->bufSize = MAX_BUFFER_SIZE * 512;
-    gpNandInfo->pbuf = grknand_buf;
+    gpNandInfo->pbuf = (char *)grknand_buf;
 
 #ifdef CONFIG_MTD_EMMC_CLK_POWER_SAVE
     gpNandInfo->emmc_clk_power_save_en = 1;
