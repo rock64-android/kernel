@@ -348,7 +348,7 @@ static void dump_io_pull(void)
 void pm_gpio_suspend(void);
 void pm_gpio_resume(void);
 
-static int rk29_pm_enter(suspend_state_t state)
+int rk29_pm_enter(suspend_state_t state)
 {
 	u32 apll, cpll, gpll, mode, clksel0;
 	u32 clkgate[4];
@@ -496,27 +496,6 @@ static struct platform_suspend_ops rk29_pm_ops = {
 	.finish		= rk29_pm_finish,
 };
 
-#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
-
-void rk29_pm_charge(void)
-{
-	rk29_pm_enter(PM_SUSPEND_MEM);
-
-}
-/*
-int  rk29_charge_judge(void)
-{
-	return readl(RK29_GPIO4_BASE + GPIO_INT_STATUS);
-
-}
-*/
-#else
-void rk29_pm_charge(void)
-{
-
-}
-
-#endif
 
 static void rk29_idle(void)
 {

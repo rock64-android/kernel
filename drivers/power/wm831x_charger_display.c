@@ -38,7 +38,6 @@
 #include <linux/mfd/wm831x/irq.h>
 #include <linux/power_supply.h>
 
-#include <linux/earlysuspend.h>
 #define READ_ON_PIN_CNT 20/*11*/
 #define BACKLIGHT_CNT	2
 #define OPEN_CNT		18
@@ -105,70 +104,6 @@ struct wm831x_chg {
 	int flag_suspend;
 	
 };
-/******************************************************************/
-#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
-void rk29_pm_charge(void);
-
-static DEFINE_MUTEX(power_suspend_lock);
-
-static struct early_suspend suspend_battery = {
-
-	.level = -0xff,
-	.suspend = NULL,
-	.resume = NULL,
-};
-
-
-void charge_earlysuspend_enter(int status) //xsf
-{
-
-#ifdef CONFIG_HAS_EARLYSUSPEND  
-
-	struct early_suspend *pos;
-	//struct early_suspend *earlysuspend_head;
-	struct early_suspend *earlysuspend_temp;
-	struct list_head *list_head;
-	struct list_head *list_temp;
-
-
-	mutex_lock(&power_suspend_lock);
-
-	//earlysuspend_head = &suspend_battery;
-	earlysuspend_temp = &suspend_battery;
-	list_head =  earlysuspend_temp->link.prev;
-
-	if(status == 0)
-	{
-		list_for_each_entry(pos, list_head, link)
-		{
-			//printk("earlysuspend---\n");
-			if (pos->suspend != NULL)
-				pos->suspend(pos);
-		}	
-	}
-	
-	if(status == 1)
-	{
-		list_for_each_entry_reverse(pos, list_head, link)
-		{
-			//printk("latereusme---\n");
-			if (pos->resume != NULL)
-				pos->resume(pos);
-		}	
-	}
-
-	mutex_unlock(&power_suspend_lock);
-#endif
-
-}
-
-#else
-void charge_earlysuspend_enter(int status)
-{
-
-}
-#endif
-/***************************************************************/
 
 static int charger_logo_display(struct linux_logo *logo)
 {
@@ -176,40 +111,22 @@ static int charger_logo_display(struct linux_logo *logo)
 	fb_show_logo(g_fb0_inf, 0);
 	return 0;
 }
-//int rk29_charge_judge(void);
-struct wm831x_chg wm831x_suspend_chg;
-static int wm831x_read_on_pin_status(struct wm831x_chg *wm831x_chg);
+
+extern int charger_suspend(void);//xsf
+
 static int charger_backlight_ctrl(int open)
 {
 	DBG("%s:open=%d\n",__FUNCTION__,open);
 	int ret;
 
 #ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
-
-	rk29_backlight_ctrl(0);
-	charge_earlysuspend_enter(0); 
-	while(1)
-	{
-		local_irq_disable();
-		rk29_pm_charge();
-
-		ret = wm831x_read_on_pin_status(&wm831x_suspend_chg);
-		//if((rk29_charge_judge() &&(0x01000000)))
-		if(ret)
-		{	
-			local_irq_enable();
-			break;
-		}
-		else
-			local_irq_enable();
-	}
-	charge_earlysuspend_enter(1); //xsf
-	ret = rk29_backlight_ctrl(1);
-
-	return ret;
+	charger_suspend();
+	return 0;
 #else
 	return rk29_backlight_ctrl(open);
 #endif
+
+
 }
 
 static int wm831x_read_on_pin_status(struct wm831x_chg *wm831x_chg)
@@ -390,8 +307,6 @@ static int rk29_charger_display(struct wm831x_chg *wm831x_chg)
 	int status;
 	struct linux_logo* chargerlogo[8];
 	int ret,i;
-	//wm831x_suspend_chg.wm831x = wm831x_chg->wm831x;
-	wm831x_suspend_chg = *wm831x_chg;
 	int count = 0;
 	
 	wm831x_chg->flag_chg = wm831x_read_chg_status(wm831x_chg);
@@ -456,6 +371,10 @@ static int rk29_charger_display(struct wm831x_chg *wm831x_chg)
 				wm831x_chg->cnt_disp = 0;
 				wm831x_chg->flag_bl = 0;
 				charger_backlight_ctrl(wm831x_chg->flag_bl);
+		#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+				wm831x_chg->flag_suspend = 0;
+		#endif
+				
 			}
 			wm831x_chg->cnt_disp = 0;
 		}
@@ -516,9 +435,6 @@ static int __devinit wm831x_chg_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, wm831x_chg);
 
 #ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
-#ifdef CONFIG_HAS_EARLYSUSPEND  
-	register_early_suspend(&suspend_battery);//xsf
-#endif
 	wm831x_chg->flag_chg = wm831x_read_chg_status(wm831x_chg);
 	if(wm831x_chg->flag_chg != 0)
 	{

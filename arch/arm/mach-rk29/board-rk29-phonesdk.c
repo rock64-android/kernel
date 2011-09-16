@@ -758,7 +758,7 @@ int wm831x_post_init(struct wm831x *parm)
 	
 	dcdc = regulator_get(NULL, "dcdc1");	// 3th ddr
 	regulator_set_voltage(dcdc,1800000,1800000);
-	regulator_set_suspend_voltage(ldo, 1800000);
+	regulator_set_suspend_voltage(dcdc, 1800000);
 	regulator_enable(dcdc);
 	printk("%s set dcdc1=%dmV end\n", __FUNCTION__, regulator_get_voltage(dcdc));	
 	regulator_put(dcdc);
@@ -2524,6 +2524,13 @@ struct platform_device phone_usb_mass_storage_device = {
 };
 #endif
 
+#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+
+struct platform_device charge_lowerpower_device = {
+	.name	= "charge_lowerpower",
+	.id	= -1,
+};
+#endif
 
 static struct platform_device *devices[] __initdata = {
 
@@ -2656,6 +2663,10 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #ifdef CONFIG_RK29_GPS
 	&rk29_device_gps,
+#endif
+
+#ifdef CONFIG_RK29_CHARGE_EARLYSUSPEND
+	&charge_lowerpower_device,
 #endif
 };
 
