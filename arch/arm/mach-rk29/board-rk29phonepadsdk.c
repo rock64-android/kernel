@@ -731,7 +731,7 @@ struct wm8994_pdata wm8994_platdata = {
 	.sp_hp_same_channel = 1,
 	
 	.BB_input_diff = 1,
-	.BB_class = PCM_BB,
+	.BB_class = NO_PCM_BB,
 	
 	.PA_control_pin = RK29_PIN6_PB6,	
 	.Power_EN_Pin = RK29_PIN5_PA1,
