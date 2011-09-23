@@ -98,7 +98,8 @@ static int rk29_hw_params(struct snd_pcm_substream *substream,
 	DBG("Enter:%s, %d, rate=%d\n", __FUNCTION__, __LINE__, params_rate(params));
 
 	/*Set the system clk for codec*/
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, pll_out, SND_SOC_CLOCK_IN);
+	snd_soc_dai_set_pll(codec_dai, RT5625_PLL1_FROM_MCLK, pll_out, 22579200);
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 22579200, SND_SOC_CLOCK_IN);
 	if (ret < 0)
 	{
 		       DBG("rk29_hw_params_rt5625:failed to set the sysclk for codec side\n"); 
@@ -226,7 +227,7 @@ static struct snd_soc_dai_link rk29_dai[] = {
 	{
 		.name = "RT5625-1",
 		.stream_name = "RT5625 PCM-1",
-		.cpu_dai = &rk29_i2s_dai,
+		.cpu_dai = &rk29_i2s_dai[1],
 		.codec_dai = &rt5625_dai[0],
 		.init = rk29_rt5625_init,
 		.ops = &rk29_ops,
@@ -234,7 +235,7 @@ static struct snd_soc_dai_link rk29_dai[] = {
 	{
 		.name = "RT5625-2",
 		.stream_name = "RT5625 PCM-2",
-		.cpu_dai = &rk29_i2s_dai,
+		.cpu_dai = &rk29_i2s_dai[1],
 		.codec_dai = &rt5625_dai[1],
 		.init = rk29_rt5625_init,
 		.ops = &rt5625_voice_ops,
