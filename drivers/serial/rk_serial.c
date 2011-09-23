@@ -251,10 +251,10 @@ static int serial_dl_write(struct uart_rk_port *up, unsigned int value)
 				return -1;
 			}
 		}
-	}
 
-	serial_out(up, UART_DLL, value & 0xff);
-	serial_out(up, UART_DLM, value >> 8 & 0xff);
+		serial_out(up, UART_DLL, value & 0xff);
+		serial_out(up, UART_DLM, value >> 8 & 0xff);
+	}
 
 	return 0;
 
@@ -274,9 +274,9 @@ static int serial_lcr_write(struct uart_rk_port *up, unsigned char value)
 			}
 			udelay(1);
 		}
-	}
 
-	serial_out(up, UART_LCR, value);
+		serial_out(up, UART_LCR, value);
+	}
 
 	return 0;
 }
@@ -944,13 +944,13 @@ static void serial_rk_handle_port(struct uart_rk_port *up)
 		 */
 
 		if (status & UART_LSR_RFE) {
-			
+
 			if(up->port.line != DBG_PORT){
 				status = serial_in(up, UART_LSR);
 				dev_info(up->port.dev, "error:lsr=0x%x\n", status);
 			}
-			
-			
+
+
 		//	rk29_uart_dump_register(up);
 		}
 
@@ -1351,9 +1351,10 @@ serial_rk_set_termios(struct uart_port *port, struct ktermios *termios,
 		if(--timeout == 0){
 			if(port->line != DBG_PORT){
 				serial_out(up, UART_SRR, UART_RESET);
-			}
+
 			dbg("rk_serial_set_termios uart.%d timeout,irq=%d,ret=0x%x  AND uart is reseted\n",
 					port->line, port->irq, serial_in(up, UART_USR));
+			}
 			break;
 		}
 		cpu_relax();
