@@ -151,7 +151,11 @@ struct registry_priv
 	u8	ht_enable;
 	u8	cbw40_enable;
 	u8	ampdu_enable;//for tx
+	u8 	rx_stbc;
+	u8	ampdu_amsdu;//A-MPDU Supports A-MSDU is permitted
 #endif
+	u8	lowrate_two_xmit;
+	
 	u8	rf_config ;
 	u8	low_power ;
 
@@ -252,11 +256,16 @@ struct dvobj_priv {
 	int	RegUsbSS;
 	
 	_sema	usb_suspend_sema;
-#ifdef CONFIG_USB_VENDOR_REQ_PREALLOC
+
+#ifdef CONFIG_USB_VENDOR_REQ_MUTEX
 	_mutex  usb_vendor_req_mutex;
+#endif
+	
+#ifdef CONFIG_USB_VENDOR_REQ_BUFFER_PREALLOC
 	u8 * usb_alloc_vendor_req_buf;
 	u8 * usb_vendor_req_buf;
 #endif	
+
 #ifdef PLATFORM_WINDOWS
 	//related device objects
 	PDEVICE_OBJECT	pphysdevobj;//pPhysDevObj;
@@ -359,6 +368,10 @@ struct _ADAPTER{
 	struct	pwrctrl_priv	pwrctrlpriv;
 	struct 	eeprom_priv eeprompriv;
 	struct	led_priv	ledpriv;
+	
+#ifdef CONFIG_MP_INCLUDED
+       struct	mp_priv	mppriv;
+#endif
 
 #ifdef CONFIG_DRVEXT_MODULE
 	struct	drvext_priv	drvextpriv;
@@ -401,6 +414,17 @@ struct _ADAPTER{
 
 	void (*intf_start)(_adapter * adapter);
 	void (*intf_stop)(_adapter * adapter);
+
+#ifdef PLATFORM_WINDOWS
+	_nic_hdl		hndis_adapter;//hNdisAdapter(NDISMiniportAdapterHandle);
+	_nic_hdl		hndis_config;//hNdisConfiguration;
+	NDIS_STRING fw_img;
+
+	u32	NdisPacketFilter;	
+	u8	MCList[MAX_MCAST_LIST_NUM][6];
+	u32	MCAddrCount;	
+#endif //end of PLATFORM_WINDOWS
+
 
 #ifdef PLATFORM_LINUX	
 	_nic_hdl pnetdev;

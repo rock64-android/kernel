@@ -15,8 +15,7 @@
  * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
- *
- 
+ * 
 ******************************************************************************/
 #ifndef __STA_INFO_H_
 #define __STA_INFO_H_
@@ -141,6 +140,8 @@ struct sta_info {
 
 	//for A-MPDU Tx
 	//unsigned char		ampdu_txen_bitmap;
+	u16	BA_starting_seqctrl[16];
+	
 
 #ifdef CONFIG_80211N_HT
 	struct ht_priv	htpriv;	

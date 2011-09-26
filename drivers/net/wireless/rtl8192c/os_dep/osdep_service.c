@@ -44,6 +44,29 @@ atomic_t _malloc_size = ATOMIC_INIT(0);
 #endif /* MEMORY_LEAK_DEBUG */
 
 
+#if defined(PLATFORM_LINUX)
+/*
+* Translate the OS dependent @param error_code to OS independent RTW_STATUS_CODE
+* @return: one of RTW_STATUS_CODE
+*/
+inline int RTW_STATUS_CODE(int error_code){
+	if(error_code >=0)
+		return _SUCCESS;
+
+	switch(error_code) {
+		//case -ETIMEDOUT:
+		//	return RTW_STATUS_TIMEDOUT;
+		default:
+			return _FAIL;
+	}
+}
+#else
+inline int RTW_STATUS_CODE(int error_code){
+	return error_code;
+}
+#endif
+
+
 inline u8* _rtw_vmalloc(u32 sz)
 {
 	u8 	*pbuf;
@@ -959,7 +982,7 @@ static android_suspend_lock_t rtw_suspend_lock ={
 inline void rtw_suspend_lock_init()
 {
 	#if  defined(CONFIG_WAKELOCK) || defined(CONFIG_ANDROID_POWER)
-	//DBG_871X("##########%s ###########\n", __FUNCTION__);
+	DBG_871X("##########%s ###########\n", __FUNCTION__);
 	#endif
 
 	#ifdef CONFIG_WAKELOCK
@@ -974,7 +997,7 @@ inline void rtw_suspend_lock_uninit()
 {
 
 	#if  defined(CONFIG_WAKELOCK) || defined(CONFIG_ANDROID_POWER)
-	//DBG_871X("##########%s###########\n", __FUNCTION__);
+	DBG_871X("##########%s###########\n", __FUNCTION__);
 	if(rtw_suspend_lock.link.next == LIST_POISON1 || rtw_suspend_lock.link.prev == LIST_POISON2) {
 		DBG_871X("##########%s########### list poison!!\n", __FUNCTION__);
 		return;	

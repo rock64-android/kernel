@@ -37,11 +37,7 @@
 #define MAX_XMITBUF_SZ	(2048)
 #endif
 
-#ifdef CONFIG_SPECIFIC_URB_NUM
-#define NR_XMITBUFF	(1)
-#else
 #define NR_XMITBUFF	(4)
-#endif
 
 #elif defined (CONFIG_PCI_HCI)
 #define MAX_XMITBUF_SZ	(1664)
@@ -61,11 +57,7 @@
 // xmit extension buff defination
 #define MAX_XMIT_EXTBUF_SZ	(2048)
 
-#ifdef CONFIG_SPECIFIC_URB_NUM
-#define NR_XMIT_EXTBUFF	(1)
-#else
 #define NR_XMIT_EXTBUFF	(4)
-#endif
 
 #define MAX_NUMBLKS		(1)
 
@@ -644,7 +636,7 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter);
 void _rtw_free_xmit_priv (struct xmit_priv *pxmitpriv);
 
 
-int rtw_alloc_hwxmits(_adapter *padapter);
+void rtw_alloc_hwxmits(_adapter *padapter);
 void rtw_free_hwxmits(_adapter *padapter);
 
 s32 rtw_free_xmitframe_ex(struct xmit_priv *pxmitpriv, struct xmit_frame *pxmitframe);

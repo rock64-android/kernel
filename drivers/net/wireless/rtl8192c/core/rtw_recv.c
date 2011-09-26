@@ -3744,9 +3744,7 @@ static int recv_indicatepkts_in_order(_adapter *padapter, struct recv_reorder_ct
 	// Prepare indication list and indication.
 	// Check if there is any packet need indicate.
 	while(!rtw_is_list_empty(phead))
-	{
-		if(plist == phead)
-			break;											
+	{										
 	
 		prframe = LIST_CONTAINOR(plist, union recv_frame, u);
 		pattrib = &prframe->u.hdr.attrib;
@@ -3808,12 +3806,9 @@ static int recv_indicatepkts_in_order(_adapter *padapter, struct recv_reorder_ct
 
 				if ((padapter->bDriverStopped == _FALSE) &&
 				    (padapter->bSurpriseRemoved == _FALSE))
-				{
-					_exit_critical_bh(&ppending_recvframe_queue->lock, &irql);//unlock before indicate packet
+				{				
 					
 					rtw_recv_indicatepkt(padapter, prframe);		//indicate this recv_frame
-					
-					_enter_critical_bh(&ppending_recvframe_queue->lock, &irql);
 					
 				}
 			}

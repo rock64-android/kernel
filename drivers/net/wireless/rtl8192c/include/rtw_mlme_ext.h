@@ -33,7 +33,7 @@
 //	So, this driver tried to extend the dwell time for each scanning channel.
 //	This will increase the chance to receive the probe response from SoftAP.
 
-#define SURVEY_TO		(100)
+#define SURVEY_TO		(120)
 #define REAUTH_TO		(300) //(50)
 #define REASSOC_TO		(300) //(50)
 //#define DISCONNECT_TO	(3000)
@@ -122,13 +122,7 @@ typedef enum _RT_CHANNEL_DOMAIN
 	RT_CHANNEL_DOMAIN_MAX,
 }RT_CHANNEL_DOMAIN, *PRT_CHANNEL_DOMAIN;
 
-//
-// We now define the following channels as the max channels in each channel plan.
-// 2G, total 14 chnls
-// {1,2,3,4,5,6,7,8,9,10,11,12,13,14}
-// 5G, total 24 chnls
-// {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,149,153,157,161,165}
-#define	MAX_CHANNEL_NUM					38//14+24
+
 #define	MAX_SCAN_CHANNEL_NUM			54
 
 typedef struct _RT_CHANNEL_PLAN
@@ -310,8 +304,7 @@ struct mlme_ext_priv
 	unsigned char	cur_channel;
 	unsigned char	cur_bwmode;
 	unsigned char	cur_ch_offset;//PRIME_CHNL_OFFSET
-	unsigned char	cur_wireless_mode;
-	//unsigned char	channel_set[NUM_CHANNELS];
+	unsigned char	cur_wireless_mode;	
 	unsigned char	max_chan_nums;
 	RT_CHANNEL_INFO		channel_set[MAX_CHANNEL_NUM];
 	unsigned char	basicrate[NumRates];
@@ -546,7 +539,7 @@ void free_mlme_ap_info(_adapter *padapter);
 void update_beacon(_adapter *padapter, u8 ie_id, u8 *oui, u8 tx);
 void expire_timeout_chk(_adapter *padapter);	
 void update_sta_info_apmode(_adapter *padapter, struct sta_info *psta);
-void start_bss_network(_adapter *padapter, u8 *pbuf);
+int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len);
 #ifdef CONFIG_NATIVEAP_MLME
 void bss_cap_update(_adapter *padapter, struct sta_info *psta);
 void sta_info_update(_adapter *padapter, struct sta_info *psta);

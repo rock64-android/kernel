@@ -37,8 +37,14 @@
 #define RTL8711_RF_MAX_SENS 6
 #define RTL8711_RF_DEF_SENS 4
 
+//
+// We now define the following channels as the max channels in each channel plan.
+// 2G, total 14 chnls
+// {1,2,3,4,5,6,7,8,9,10,11,12,13,14}
+// 5G, total 24 chnls
+// {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,149,153,157,161,165}
+#define	MAX_CHANNEL_NUM					38//14+24
 
-#define NUM_CHANNELS	32
 //#define NUM_REGULATORYS	21
 #define NUM_REGULATORYS	1
 
@@ -49,9 +55,9 @@
 
 struct	regulatory_class {
 	u32	starting_freq;					//MHz, 
-	u8	channel_set[NUM_CHANNELS];
-	u8	channel_cck_power[NUM_CHANNELS];//dbm
-	u8	channel_ofdm_power[NUM_CHANNELS];//dbm
+	u8	channel_set[MAX_CHANNEL_NUM];
+	u8	channel_cck_power[MAX_CHANNEL_NUM];//dbm
+	u8	channel_ofdm_power[MAX_CHANNEL_NUM];//dbm
 	u8	txpower_limit;  				//dbm
 	u8	channel_spacing;				//MHz
 	u8	modem;

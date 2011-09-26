@@ -812,7 +812,7 @@ static void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 	RSVDPAGE_LOC	RsvdPageLoc;
 	BOOLEAN	bDLOK = _FALSE;
 
-	//DBG_871X("%s\n", __FUNCTION__);
+	DBG_871X("%s\n", __FUNCTION__);
 
 	ReservedPagePacket = (u8*)rtw_malloc(1000);
 	if(ReservedPagePacket == NULL){
@@ -926,7 +926,7 @@ static void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 
 	if(bDLOK)
 	{
-		//DBG_871X("Set RSVD page location to Fw.\n");
+		DBG_871X("Set RSVD page location to Fw.\n");
 		FillH2CCmd(Adapter, RSVD_PAGE_EID, sizeof(RsvdPageLoc), (u8 *)&RsvdPageLoc);
 	}
 
@@ -943,7 +943,7 @@ void rtl8192c_set_FwJoinBssReport_cmd(_adapter* padapter, u8 mstatus)
 	
 _func_enter_;
 
-	//DBG_871X("%s mstatus(%x)\n", __FUNCTION__,mstatus);
+	DBG_871X("%s mstatus(%x)\n", __FUNCTION__,mstatus);
 
 	if(mstatus == 1)
 	{

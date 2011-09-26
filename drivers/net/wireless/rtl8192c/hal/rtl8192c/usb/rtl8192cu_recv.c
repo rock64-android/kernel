@@ -221,7 +221,7 @@ void rtl8192cu_free_recv_priv (_adapter *padapter)
 #ifdef CONFIG_PREALLOC_RECV_SKB
 
 	if (skb_queue_len(&precvpriv->free_recv_skb_queue)) {
-		//DBG_8192C(KERN_WARNING "free_recv_skb_queue not empty, %d\n", skb_queue_len(&precvpriv->free_recv_skb_queue));
+		DBG_8192C(KERN_WARNING "free_recv_skb_queue not empty, %d\n", skb_queue_len(&precvpriv->free_recv_skb_queue));
 	}
 
 	skb_queue_purge(&precvpriv->free_recv_skb_queue);

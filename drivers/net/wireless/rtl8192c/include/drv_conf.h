@@ -27,27 +27,39 @@
 
 #endif
 
-//Rockchips' android kernel doesn't has CONFIG_ANDROID defined,
+//Older Android kernel doesn't has CONFIG_ANDROID defined,
 //add this to force CONFIG_ANDROID defined
 #ifdef CONFIG_PLATFORM_ANDROID
-//#define CONFIG_ANDROID
+#ifndef  CONFIG_ANDROID
+#define CONFIG_ANDROID
+#endif
 #endif
 
 #if defined(CONFIG_HAS_EARLYSUSPEND) && defined (CONFIG_RESUME_IN_WORKQUEUE)
-	#warning "You have CONFIG_HAS_EARLYSUSPEND enabled in your system, we disable CONFIG_RESUME_IN_WORKQUEUE automatically.\n"
+	#warning "You have CONFIG_HAS_EARLYSUSPEND enabled in your system, we disable CONFIG_RESUME_IN_WORKQUEUE automatically"
 	#undef CONFIG_RESUME_IN_WORKQUEUE
 #endif
 
 #if defined(CONFIG_ANDROID_POWER) && defined (CONFIG_RESUME_IN_WORKQUEUE)
-	#warning "You have CONFIG_ANDROID_POWER enabled in your system, we disable CONFIG_RESUME_IN_WORKQUEUE automatically.\n"
+	#warning "You have CONFIG_ANDROID_POWER enabled in your system, we disable CONFIG_RESUME_IN_WORKQUEUE automatically"
 	#undef CONFIG_RESUME_IN_WORKQUEUE
 #endif
 
 #ifdef CONFIG_RESUME_IN_WORKQUEUE //this can be removed, because there is no case for this...
 	#if !defined( CONFIG_WAKELOCK) && !defined(CONFIG_ANDROID_POWER)
-	#error "enable CONFIG_RESUME_IN_WORKQUEUE without CONFIG_WAKELOCK or CONFIG_ANDROID_POWER will suffer from the danger of wifi's unfunctionality...\n"
-	#error "If you still want to enable CONFIG_RESUME_IN_WORKQUEUE in this case, mask this preprossor checking and GOOD LUCK...\n"
+	#error "enable CONFIG_RESUME_IN_WORKQUEUE without CONFIG_WAKELOCK or CONFIG_ANDROID_POWER will suffer from the danger of wifi's unfunctionality..."
+	#error "If you still want to enable CONFIG_RESUME_IN_WORKQUEUE in this case, mask this preprossor checking and GOOD LUCK..."
 	#endif
+#endif
+
+//About USB VENDOR REQ
+#if defined(CONFIG_USB_VENDOR_REQ_BUFFER_PREALLOC) && !defined(CONFIG_USB_VENDOR_REQ_MUTEX) 
+	#warning "define CONFIG_USB_VENDOR_REQ_MUTEX for CONFIG_USB_VENDOR_REQ_BUFFER_PREALLOC automatically"
+	#define CONFIG_USB_VENDOR_REQ_MUTEX
+#endif
+#if defined(CONFIG_VENDOR_REQ_RETRY) &&  !defined(CONFIG_USB_VENDOR_REQ_MUTEX)
+	#warning "define CONFIG_USB_VENDOR_REQ_MUTEX for CONFIG_VENDOR_REQ_RETRY automatically"
+	#define CONFIG_USB_VENDOR_REQ_MUTEX
 #endif
 
 
