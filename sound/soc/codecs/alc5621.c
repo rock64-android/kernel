@@ -44,6 +44,10 @@ static int caps_charge = 500;
 module_param(caps_charge, int, 0);
 MODULE_PARM_DESC(caps_charge, "RT5621 cap charge time (msecs)");
 
+
+#define ENABLE_EQ_HREQ 1
+
+
 /* codec private data */
 struct rt5621_priv {
 	unsigned int sysclk;
@@ -59,20 +63,64 @@ struct rt5621_reg{
 
 static struct rt5621_reg init_data[] = {
 	{RT5621_AUDIO_INTERFACE,        0x8000},    //set I2S codec to slave mode
-	{RT5621_STEREO_DAC_VOL,         0x0808},    //default stereo DAC volume to 0db
-	{RT5621_OUTPUT_MIXER_CTRL,      0x0740},    //default output mixer control	
+	{RT5621_STEREO_DAC_VOL,         0x0505},    //default stereo DAC volume to 0db
+	{RT5621_OUTPUT_MIXER_CTRL,      0x2740},    //default output mixer control	
 	{RT5621_ADC_REC_MIXER,          0x3f3f},    //set record source is Mic1 by default
 	{RT5621_MIC_CTRL,               0x0500},    //set Mic1,Mic2 boost 20db	
 	{RT5621_SPK_OUT_VOL,            0x8080},    //default speaker volume to 0db 
-	{RT5621_HP_OUT_VOL,             0x8888},    //default HP volume to -12db	
-	{RT5621_ADD_CTRL_REG,           0x5f00},    //Class AB/D speaker ratio is 1VDD
+	{RT5621_HP_OUT_VOL,             0x8080},    //default HP volume to -12db	
+	{RT5621_ADD_CTRL_REG,           0x4b00},    //Class AB/D speaker ratio is 1.25VDD
 	{RT5621_STEREO_AD_DA_CLK_CTRL,  0x066d},    //set Dac filter to 256fs
+	{RT5621_ADC_REC_GAIN,		    0xfa95},    //set ADC boost to 15db	
 	{RT5621_HID_CTRL_INDEX,         0x46},	    //Class D setting
 	{RT5621_HID_CTRL_DATA,          0xFFFF},    //power on Class D Internal register
+       {RT5621_JACK_DET_CTRL,          0x4810},    //power on Class D Internal register
 };
 
 #define RT5621_INIT_REG_NUM ARRAY_SIZE(init_data)
 
+//*******************************************************************************************************************
+//EQ parameter
+static enum
+{
+	NORMAL=0,
+	CLUB,
+	DANCE,
+	LIVE,	
+	POP,
+	ROCK,
+	OPPO,
+	TREBLE,
+	BASS,
+	EQTEST,
+	HFREQ,
+};
+
+typedef struct  _HW_EQ_PRESET
+{
+	u16 	HwEqType;
+	u16 	EqValue[14];
+	u16  HwEQCtrl;
+
+}HW_EQ_PRESET;
+
+
+HW_EQ_PRESET HwEq_Preset[]={
+/*			0x0		0x1		0x2	  0x3	0x4		0x5		0x6		0x7	0x8		0x9		0xa	0xb		0xc		0x62*/
+	{NORMAL,{0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000},0x0000},			
+	{CLUB  ,{0x1C10,0x0000,0xC1CC,0x1E5D,0x0699,0xCD48,0x188D,0x0699,0xC3B6,0x1CD0,0x0699,0x0436,0x0000},0x800E},
+	{DANCE ,{0x1F2C,0x095B,0xC071,0x1F95,0x0616,0xC96E,0x1B11,0xFC91,0xDCF2,0x1194,0xFAF2,0x0436,0x0000},0x800F},
+	{LIVE  ,{0x1EB5,0xFCB6,0xC24A,0x1DF8,0x0E7C,0xC883,0x1C10,0x0699,0xDA41,0x1561,0x0295,0x0436,0x0000},0x800F},
+	{POP   ,{0x1E98,0xFCB6,0xC340,0x1D60,0x095B,0xC6AC,0x1BBC,0x0556,0x0689,0x0F33,0x0000,0xEDD1,0xF805},0x8017},
+	{ROCK  ,{0x1EB5,0xFCB6,0xC071,0x1F95,0x0424,0xC30A,0x1D27,0xF900,0x0C5D,0x0FC7,0x0E23,0x0436,0x0000},0x800F},
+	{OPPO  ,{0x0000,0x0000,0xCA4A,0x17F8,0x0FEC,0xCA4A,0x17F8,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000},0x800F},
+	{TREBLE,{0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x188D,0x1699},0x8010},
+	{BASS  ,{0x1A43,0x0C00,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000},0x8001},
+	{EQTEST,{0x1EE1,0x0FEC,0xC340,0x1D60,0x095B,0xC6AC,0x1BBC,0x0556,0x0689,0x0F33,0x0000,0xEDD1,0xF805},0x8001},
+	{HFREQ, {0x1BBC,0x0000,0xC9A4,0x1BBC,0x0000,0x2997,0x142D,0xFCB6,0xEF01,0x1BBC,0x0000,0xE835,0x0FEC},0x8014},	//flove062311
+};
+
+//*******************************************************************************************************************
 /*
  * rt5621 register cache
  * We can't read the RT5621 register space when we
@@ -87,6 +135,7 @@ static const u16 rt5621_reg[0x80/2];
 /*reg84*/
 /*bit0,1:for hp pga power control
  *bit2,3:for aux pga power control
+ *bit4~7 for EQ function
  */
 #define MISC_FUNC_REG 0x84
 static u16 reg80=0,reg82=0, reg84 = 0;
@@ -140,7 +189,7 @@ static int rt5621_write(struct snd_soc_codec *codec, unsigned int reg,
 	}	
 
 
-	printk("rt5621 write reg=%x,value=%x\n",reg,value);
+	//printk("rt5621 write reg=%x,value=%x\n",reg,value);
 	data[0] = reg;
 	data[1] = (0xFF00 & value) >> 8;
 	data[2] = 0x00FF & value;
@@ -148,7 +197,7 @@ static int rt5621_write(struct snd_soc_codec *codec, unsigned int reg,
 	if (codec->hw_write(codec->control_data, data, 3) == 3)
 	{
 		rt5621_write_reg_cache (codec, reg, value);		
-		printk(KERN_INFO "rt5621 write reg=%x,value=%x\n",reg,value);
+	//	printk(KERN_INFO "rt5621 write reg=%x,value=%x\n",reg,value);
 		return 0;
 	}
 	else
@@ -178,43 +227,23 @@ static unsigned int rt5621_read(struct snd_soc_codec *codec, unsigned int reg)
 		 return -EIO;	
 	}
 
+		data[0] = reg;
 
-	data[0] = reg;
-//flove031811_S
-#if 0
-      i2c_master_recv(codec->control_data, data, 2);
-      
+	   i2c_master_reg8_recv(codec->control_data,reg,data,2,100 * 1000);	
+	   	      
        value = (data[0]<<8) | data[1];         
-       printk("rt5621_read reg%x=%x\n",reg,value);
-#elif 1
-
-	i2c_master_reg8_recv(codec->control_data,reg,data, 2,100 * 1000);
-
-	      value = (data[0]<<8) | data[1];         
-       printk("rt5621_read reg%x=%x\n",reg,value);
-	   return value;
-
-#else	
-	if(codec->hw_write(codec->control_data, data, 1) ==1)
-	{
-		i2c_master_recv(codec->control_data, data, 2);
-
-		value = (data[0]<<8) | data[1];		
-		printk(KERN_DEBUG "rt5621 read reg%x=%x\n",reg,value);
-		
-		return value;
-	}
-	else
-	{
-		printk(KERN_ERR "rt5621 read faile\n");
-		return -EIO;			
-	}		
-#endif
-//flove031811_E	
+       //printk("rt5621_read reg%x=%x\n",reg,value);
+       
+       return value;	
 }
 
 #define rt5621_write_mask(c, reg, value, mask) snd_soc_update_bits(c, reg, mask, value)
 
+#define rt5621_write_index_reg(c, addr, data) \
+{ \
+	rt5621_write(c, 0x6a, addr); \
+	rt5621_write(c, 0x6c, data); \
+}
 
 #define rt5621_reset(c) rt5621_write(c, 0x0, 0)
 
@@ -283,14 +312,14 @@ static int rt5621_ChangeCodecPowerStatus(struct snd_soc_codec *codec,int power_s
 		case POWER_STATE_D1_PLAYBACK:	//Low on of Playback
 
 
-			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD2,PWR_VREF|PWR_DAC_REF_CIR|PWR_L_DAC_CLK|PWR_R_DAC_CLK|PWR_L_HP_MIXER|PWR_R_HP_MIXER|PWR_CLASS_AB|PWR_CLASS_D
-											  			 ,PWR_VREF|PWR_DAC_REF_CIR|PWR_L_DAC_CLK|PWR_R_DAC_CLK|PWR_L_HP_MIXER|PWR_R_HP_MIXER|PWR_CLASS_AB|PWR_CLASS_D);
+			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD2,PWR_VREF|PWR_DAC_REF_CIR|PWR_L_DAC_CLK|PWR_R_DAC_CLK|PWR_L_HP_MIXER|PWR_R_HP_MIXER|PWR_CLASS_AB|PWR_CLASS_D|PWR_SPK_MIXER
+											  			 ,PWR_VREF|PWR_DAC_REF_CIR|PWR_L_DAC_CLK|PWR_R_DAC_CLK|PWR_L_HP_MIXER|PWR_R_HP_MIXER|PWR_CLASS_AB|PWR_CLASS_D|PWR_SPK_MIXER);
 
-			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD3,PWR_MAIN_BIAS|PWR_HP_R_OUT_VOL|PWR_HP_L_OUT_VOL|PWR_SPK_OUT 
-											   			 ,PWR_MAIN_BIAS|PWR_HP_R_OUT_VOL|PWR_HP_L_OUT_VOL|PWR_SPK_OUT);		
+			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD3,PWR_MAIN_BIAS|PWR_HP_R_OUT_VOL|PWR_HP_L_OUT_VOL|PWR_SPK_OUT|PWR_AUXOUT_L_VOL_AMP|PWR_AUXOUT_R_VOL_AMP 
+											   			 ,PWR_MAIN_BIAS|PWR_HP_R_OUT_VOL|PWR_HP_L_OUT_VOL|PWR_SPK_OUT|PWR_AUXOUT_L_VOL_AMP|PWR_AUXOUT_R_VOL_AMP);		
 
-			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD1,PWR_MAIN_I2S_EN|PWR_HP_OUT_ENH_AMP|PWR_HP_OUT_AMP
-											   			 ,PWR_MAIN_I2S_EN|PWR_HP_OUT_ENH_AMP|PWR_HP_OUT_AMP);
+			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD1,PWR_MAIN_I2S_EN|PWR_HP_OUT_ENH_AMP|PWR_HP_OUT_AMP|PWR_AUX_OUT_AMP|PWR_AUX_OUT_ENH_AMP
+											   			 ,PWR_MAIN_I2S_EN|PWR_HP_OUT_ENH_AMP|PWR_HP_OUT_AMP|PWR_AUX_OUT_AMP|PWR_AUX_OUT_ENH_AMP);
 									
 
 		break;
@@ -328,7 +357,7 @@ static int rt5621_ChangeCodecPowerStatus(struct snd_soc_codec *codec,int power_s
 
 			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD1 ,0,PWR_HP_OUT_ENH_AMP|PWR_HP_OUT_AMP);											   
 									
-			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD2 ,0,PWR_DAC_REF_CIR|PWR_L_DAC_CLK|PWR_R_DAC_CLK|PWR_L_HP_MIXER|PWR_R_HP_MIXER|PWR_CLASS_AB|PWR_CLASS_D);
+			rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD2 ,0,PWR_DAC_REF_CIR|PWR_L_DAC_CLK|PWR_R_DAC_CLK|PWR_L_HP_MIXER|PWR_R_HP_MIXER|PWR_CLASS_AB|PWR_CLASS_D|PWR_SPK_MIXER);
 
 		break;
 
@@ -497,6 +526,64 @@ static int Enable_ADC_Input_Source(struct snd_soc_codec *codec,unsigned short in
 }
 #endif
 
+static void rt5621_update_eqmode(struct snd_soc_codec *codec, int mode)
+{
+	u16 HwEqIndex=0;
+
+	if(mode==NORMAL)
+	{
+		/*clear EQ parameter*/
+		for(HwEqIndex=0;HwEqIndex<=0x0C;HwEqIndex++)
+		{
+
+			rt5621_write_index_reg(codec, HwEqIndex, HwEq_Preset[mode].EqValue[HwEqIndex])
+		}
+		
+		rt5621_write(codec, 0x62,0x0);		/*disable EQ block*/
+	}
+	else
+	{
+		rt5621_write(codec, 0x62,HwEq_Preset[mode].HwEQCtrl);
+
+		/*Fill EQ parameter*/
+		for(HwEqIndex=0;HwEqIndex<=0x0C;HwEqIndex++)
+		{
+			rt5621_write_index_reg(codec, HwEqIndex, HwEq_Preset[mode].EqValue[HwEqIndex]) 
+		}		
+		//update EQ parameter
+		rt5621_write(codec, 0x66,0x1f);
+		schedule_timeout_uninterruptible(msecs_to_jiffies(1));
+		rt5621_write(codec, 0x66,0x0);
+	}
+}
+
+
+static int rt5621_eq_sel_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	unsigned short val;
+	unsigned short mask, bitmask;
+
+	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
+		;
+	if (ucontrol->value.enumerated.item[0] > e->max - 1)
+		return -EINVAL;
+	val = ucontrol->value.enumerated.item[0] << e->shift_l;
+	mask = (bitmask - 1) << e->shift_l;
+	if (e->shift_l != e->shift_r) {
+		if (ucontrol->value.enumerated.item[1] > e->max - 1)
+			return -EINVAL;
+		val |= ucontrol->value.enumerated.item[1] << e->shift_r;
+		mask |= (bitmask - 1) << e->shift_r;
+	}
+
+	 snd_soc_update_bits(codec, e->reg, mask, val);
+
+	printk(KERN_DEBUG "value=%d\n", ucontrol->value.enumerated.item[0]);
+	rt5621_update_eqmode(codec, ucontrol->value.enumerated.item[0]);
+	return 0;
+}
 
 //static const char *rt5621_spkl_pga[] = {"Vmid","HPL mixer","SPK mixer","Mono Mixer"};
 static const char *rt5621_spkn_source_sel[] = {"RN", "RP", "LN"};
@@ -506,9 +593,11 @@ static const char *rt5621_hpr_pga[]  = {"Vmid","HPR mixer"};
 static const char *rt5621_mono_pga[] = {"Vmid","HP mixer","SPK mixer","Mono Mixer"};
 static const char *rt5621_amp_type_sel[] = {"Class AB","Class D"};
 static const char *rt5621_mic_boost_sel[] = {"Bypass","20db","30db","40db"};
+static const char *rt5621_eq_sel[] = {"NORMAL", "CLUB","DANCE", "LIVE","POP",
+					"ROCK", "OPPO", "TREBLE", "BASS"};    
 
 static const struct soc_enum rt5621_enum[] = {
-SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL, 14, 3, rt5621_spkn_source_sel), /* spkn source from hp mixer */	
+SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL, 14, 3, rt5621_spkn_source_sel), /* spkn source from hp mixer 0*/	
 SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL, 10, 4, rt5621_spk_pga), /* spk input sel 1 */	
 SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL, 9, 2, rt5621_hpl_pga), /* hp left input sel 2 */	
 SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL, 8, 2, rt5621_hpr_pga), /* hp right input sel 3 */	
@@ -516,6 +605,7 @@ SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL, 6, 4, rt5621_mono_pga), /* mono input 
 SOC_ENUM_SINGLE(RT5621_MIC_CTRL			, 10,4, rt5621_mic_boost_sel), /*Mic1 boost sel 5 */
 SOC_ENUM_SINGLE(RT5621_MIC_CTRL			, 8,4,rt5621_mic_boost_sel), /*Mic2 boost sel 6 */
 SOC_ENUM_SINGLE(RT5621_OUTPUT_MIXER_CTRL,13,2,rt5621_amp_type_sel), /*Speaker AMP sel 7 */
+SOC_ENUM_SINGLE(MISC_FUNC_REG, 4, 9, rt5621_eq_sel),                          /*8*/
 };
 
 static int rt5621_amp_sel_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
@@ -571,6 +661,7 @@ SOC_ENUM("Mic 2 Boost", 				rt5621_enum[6]),
 SOC_ENUM_EXT("Speaker Amp Type",			rt5621_enum[7], snd_soc_get_enum_double, rt5621_amp_sel_put),
 SOC_DOUBLE("AUX In Volume", 			RT5621_AUXIN_VOL, 8, 0, 31, 1),
 SOC_DOUBLE("Capture Volume", 			RT5621_ADC_REC_GAIN, 7, 0, 31, 0),
+SOC_ENUM_EXT("EQ Mode", rt5621_enum[8], snd_soc_get_enum_double, rt5621_eq_sel_put),
 };
 
 
@@ -1022,7 +1113,9 @@ static int rt5621_pcm_hw_prepare(struct snd_pcm_substream *substream,
 						
 			rt5621_AudioOutEnable(codec,RT_WAVOUT_SPK,0);	//unmute speaker out
 			
-			rt5621_AudioOutEnable(codec,RT_WAVOUT_HP,0);	//unmute hp out
+			rt5621_AudioOutEnable(codec,RT_WAVOUT_HP,0);	//unmute hp
+			
+			rt5621_AudioOutEnable(codec,RT_WAVOUT_AUXOUT,0);	//unmute auxout out
 
 			break;
 		case SNDRV_PCM_STREAM_CAPTURE:
@@ -1047,36 +1140,40 @@ struct _pll_div {
 
 static const struct _pll_div codec_pll_div[] = {
 	
-	{  2048000,  8192000,	0x0ea0},		
-	{  3686400,  8192000,	0x4e27},	
-	{ 12000000,  8192000,	0x456b},   
+	{  2048000,  8192000,	0x0ea0},
+	{  3686400,  8192000,	0x4e27},
+	{ 12000000,  8192000,	0x456b},
 	{ 13000000,  8192000,	0x495f},
-	{ 13100000,	 8192000,	0x0320},	
+	{ 13100000,	 8192000,	0x0320},
 	{  2048000,  11289600,	0xf637},
-	{  3686400,  11289600,	0x2f22},	
-	{ 12000000,  11289600,	0x3e2f},   
+	{  3686400,  11289600,	0x2f22},
+	{ 12000000,  11289600,	0x3e2f},
 	{ 13000000,  11289600,	0x4d5b},
-	{ 13100000,	 11289600,	0x363b},	
+	{ 13100000,	 11289600,	0x363b},
 	{  2048000,  16384000,	0x1ea0},
-	{  3686400,  16384000,	0x9e27},	
-	{ 12000000,  16384000,	0x452b},   
+	{  3686400,  16384000,	0x9e27},
+	{ 12000000,  16384000,	0x452b},
 	{ 13000000,  16384000,	0x542f},
-	{ 13100000,	 16384000,	0x03a0},	
+	{ 13100000,	 16384000,	0x03a0},
 	{  2048000,  16934400,	0xe625},
-	{  3686400,  16934400,	0x9126},	
-	{ 12000000,  16934400,	0x4d2c},   
+	{  3686400,  16934400,	0x9126},
+	{ 12000000,  16934400,	0x4d2c},
 	{ 13000000,  16934400,	0x742f},
-	{ 13100000,	 16934400,	0x3c27},			
+	{ 13100000,	 16934400,	0x3c27},
 	{  2048000,  22579200,	0x2aa0},
-	{  3686400,  22579200,	0x2f20},	
-	{ 12000000,  22579200,	0x7e2f},   
+	{  3686400,  22579200,	0x2f20},
+	{ 12000000,  22579200,	0x7e2f},
 	{ 13000000,  22579200,	0x742f},
-	{ 13100000,	 22579200,	0x3c27},		
+	{ 13100000,	 22579200,	0x3c27},
 	{  2048000,  24576000,	0x2ea0},
-	{  3686400,  24576000,	0xee27},	
-	{ 12000000,  24576000,	0x2915},   
+	{  3686400,  24576000,	0xee27},
+	{ 12000000,  24576000,	0x2915},
 	{ 13000000,  24576000,	0x772e},
-	{ 13100000,	 24576000,	0x0d20},	
+	{ 13100000,	 24576000,	0x0d20},
+	{ 26000000,  24576000,	0x2027},
+	{ 26000000,  22579200,	0x392f},
+	{ 24576000,  22579200,	0x0921},
+	{ 24576000,  24576000,	0x02a0},
 };
 
 static const struct _pll_div codec_bclk_pll_div[] = {
@@ -1085,8 +1182,8 @@ static const struct _pll_div codec_bclk_pll_div[] = {
 	{  3072000,	 24576000,	0x1ea0},
 	{  512000, 	 24576000,  0x8e90},
 	{  256000,   24576000,  0xbe80},
-		{  2822400,	 11289600,	0x1ee0},	//flove040711
-	{  3072000,	 12288000,	0x1ee0},	//flove040711	
+	{  2822400,	 11289600,	0x1ee0},
+	{  3072000,	 12288000,	0x1ee0},		
 };
 
 
@@ -1115,6 +1212,7 @@ static int rt5621_set_dai_pll(struct snd_soc_dai *codec_dai,
 				rt5621_write_mask(codec, RT5621_GLOBAL_CLK_CTRL_REG, 0x0000, 0x4000);			 	
 			 	rt5621_write(codec,RT5621_PLL_CTRL,codec_pll_div[i].regvalue);//set PLL parameter 	
 			 	rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD2, 0x1000,0x1000);	//enable PLL power	
+			 	rt5621_write_mask(codec,RT5621_GLOBAL_CLK_CTRL_REG,0x8000,0x8000);//Codec sys-clock from PLL 
 				ret = 0;
 			}
 	}
@@ -1128,13 +1226,13 @@ static int rt5621_set_dai_pll(struct snd_soc_dai *codec_dai,
 				rt5621_write_mask(codec, RT5621_GLOBAL_CLK_CTRL_REG, 0x4000, 0x4000);
 				rt5621_write(codec,RT5621_PLL_CTRL,codec_bclk_pll_div[i].regvalue);//set PLL parameter 
 				rt5621_write_mask(codec,RT5621_PWR_MANAG_ADD2, 0x1000,0x1000);	//enable PLL power	
+				rt5621_write_mask(codec,RT5621_GLOBAL_CLK_CTRL_REG,0x8000,0x8000);//Codec sys-clock from PLL 
 				ret = 0;
 			}
 		}
 	}
-
-	rt5621_write_mask(codec,RT5621_GLOBAL_CLK_CTRL_REG,0x8000,0x8000);//Codec sys-clock from PLL 	
-	return ret;
+		
+	return 0;
 }
 
 
@@ -1178,6 +1276,16 @@ static const struct _coeff_div coeff_div[] = {
 	{12288000, 48000, 256*1, 0x0a2d},
 	{24576000, 48000, 256*2, 0x1a2d},
 	{49152000, 48000, 256*4, 0x2a2d},
+	
+	//MCLK is 24.576Mhz(for 8k,16k,32k)
+	{24576000,  8000, 384*8, 0x3c6b},
+	{24576000, 16000, 384*4, 0x2c6b},
+	{24576000, 32000, 384*2, 0x1c6b},
+
+	//MCLK is 22.5792mHz(for 11k,22k)
+	{22579200, 11025, 256*8, 0x3a2d},
+	{22579200, 22050, 256*4, 0x2a2d},
+			
 
 };
 
@@ -1213,11 +1321,15 @@ static int rt5621_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct rt5621_priv *rt5621 = codec->private_data;
 
-	switch (freq) {
-	case 24576000:
+	if ((freq >= (256 * 8000)) && (freq <= (512 * 48000))) {
 		rt5621->sysclk = freq;
-		return 0;
+		return 0;	
 	}
+	
+	printk("unsupported sysclk freq %u for audio i2s\n", freq);
+	printk("Set sysclk to 24.576Mhz by default\n");	
+
+	rt5621->sysclk = 24576000;
 	return 0;
 }
 
@@ -1392,15 +1504,17 @@ static void rt5621_shutdown(struct snd_pcm_substream *substream, struct snd_soc_
 			rt5621_AudioOutEnable(codec,RT_WAVOUT_SPK,1);	//mute speaker out
 			
 			rt5621_AudioOutEnable(codec,RT_WAVOUT_HP,1);	//mute hp out
+			
+			rt5621_AudioOutEnable(codec,RT_WAVOUT_AUXOUT,1);	//mute auxout
 
-			rt5621_ChangeCodecPowerStatus(codec,POWER_STATE_D2_PLAYBACK);	//power off dac to hp and speaker out
+			rt5621_ChangeCodecPowerStatus(codec,POWER_STATE_D2_PLAYBACK);	//power off dac to hp and speaker out and auxout
 						
 
 
 			break;
 		case SNDRV_PCM_STREAM_CAPTURE:
 
-			Enable_ADC_Input_Source(codec,RT_WAVIN_L_MIC1|RT_WAVIN_R_MIC1,0);	//disable record	source from mic1
+			Enable_ADC_Input_Source(codec,RT_WAVIN_L_MIC1|RT_WAVIN_R_MIC1,0);	//disable record source from mic1
 
 			rt5621_ChangeCodecPowerStatus(codec,POWER_STATE_D2_RECORD);
 			
@@ -1412,7 +1526,8 @@ static void rt5621_shutdown(struct snd_pcm_substream *substream, struct snd_soc_
 #endif
 
 
-#define RT5621_HIFI_RATES SNDRV_PCM_RATE_8000_48000
+//#define RT5621_HIFI_RATES SNDRV_PCM_RATE_8000_48000
+#define RT5621_HIFI_RATES (SNDRV_PCM_RATE_44100) // zyy 20110704, playback and record use same sample rate
 
 #define RT5621_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
 	SNDRV_PCM_FMTBIT_S24_LE)
@@ -1630,7 +1745,7 @@ static int rt5621_suspend(struct platform_device *pdev, pm_message_t state)
 	if(!codec->card)
 		return 0;
 		
-	rt5621_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	rt5621_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
@@ -1647,7 +1762,24 @@ static int rt5621_resume(struct platform_device *pdev)
 		return 0;
 
 	/* Sync reg_cache with the hardware */	
+#if 1
+	rt5621_reset(codec);
+	rt5621_write(codec, RT5621_PWR_MANAG_ADD3, 0x8000);//enable Main bias
+	rt5621_write(codec, RT5621_PWR_MANAG_ADD2, 0x2000);//enable Vref
 
+	hp_depop_mode2(codec);
+
+	rt5621_init_reg(codec);
+	
+#if ENABLE_EQ_HREQ 		
+
+	rt5621_write_index_reg(codec, 0x11,0x1);
+	rt5621_write_index_reg(codec, 0x12,0x1);
+	rt5621_update_eqmode(codec,HFREQ);
+	
+#endif	
+
+#else
 	for (i = 0; i < ARRAY_SIZE(rt5621_reg); i++) {
 		if (i == RT5621_RESET)
 			continue;
@@ -1656,6 +1788,7 @@ static int rt5621_resume(struct platform_device *pdev)
 		data[2] = 0x00FF & cache[i];	
 		codec->hw_write(codec->control_data, data, 3);
 	}	
+#endif
 
 	rt5621_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	
@@ -1670,6 +1803,38 @@ static int rt5621_resume(struct platform_device *pdev)
 	return 0;
 }
 
+void codec_set_spk(bool on)
+{
+	struct snd_soc_device *socdev;
+	struct snd_soc_codec *codec;
+
+	socdev = rt5621_socdev;
+
+	dbg("%s: %d\n", __func__, on);
+
+	if(!socdev)
+		return;
+
+	codec = socdev->card->codec;
+	if(!codec)
+		return;
+
+	if(on){
+		dbg("snd_soc_dapm_enable_pin\n");
+		snd_soc_dapm_enable_pin(codec, "Headphone Jack");
+		snd_soc_dapm_enable_pin(codec, "Ext Spk");
+	}
+	else{
+
+		dbg("snd_soc_dapm_disable_pin\n");
+		snd_soc_dapm_disable_pin(codec, "Headphone Jack");
+		snd_soc_dapm_disable_pin(codec, "Ext Spk");
+	}
+
+	snd_soc_dapm_sync(codec);
+
+	return;
+}
 
 /*
  * initialise the RT5621 driver
@@ -1710,6 +1875,15 @@ static int rt5621_init(struct snd_soc_device *socdev)
 	hp_depop_mode2(codec);
 
 	rt5621_init_reg(codec);
+
+#if ENABLE_EQ_HREQ 		
+
+	rt5621_write_index_reg(codec, 0x11,0x1);
+	rt5621_write_index_reg(codec, 0x12,0x1);
+	rt5621_update_eqmode(codec,HFREQ);
+	
+#endif
+	
 	rt5621_set_bias_level(codec, SND_SOC_BIAS_PREPARE);
 	codec->bias_level = SND_SOC_BIAS_STANDBY;
 	schedule_delayed_work(&codec->delayed_work,
@@ -1795,6 +1969,7 @@ static int rt5621_add_i2c_device(struct platform_device *pdev,
 	struct i2c_client *client;
 #endif
 	int ret;
+
 	ret = i2c_add_driver(&rt5621_i2c_driver);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "can't add i2c driver\n");
@@ -1849,6 +2024,7 @@ static int rt5621_probe(struct platform_device *pdev)
 		kfree(codec);
 		return -ENOMEM;
 	}
+
 	codec->private_data = rt5621;
 	socdev ->card->codec = codec;
 	mutex_init(&codec->mutex);
@@ -1861,10 +2037,12 @@ static int rt5621_probe(struct platform_device *pdev)
 		printk(KERN_WARNING "asoc: failed to add index_reg sysfs files\n");
 
 	ret = -ENODEV;
-//	if (setup->i2c_address) {
+//	if (setup->i2c_address) 
+	{
 		codec->hw_write = (hw_write_t)i2c_master_send;
 		ret = rt5621_add_i2c_device(pdev, setup);
-//	}
+	}
+
 	if (ret != 0) {
 		kfree(codec->private_data);
 		kfree(codec);
