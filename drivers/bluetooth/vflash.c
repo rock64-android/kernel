@@ -29,7 +29,7 @@ static int minor = MISC_DYNAMIC_MINOR;
 static struct miscdevice vflash_miscdev;
 
 #define READ_BDADDR_FROM_FLASH  0x01
-
+#define READ_BPIMEI_FROM_FLASH   0x03
 extern char GetSNSectorInfo(char * pbuf);
 extern unsigned char wlan_mac_addr[6];
 
@@ -43,7 +43,6 @@ static int vflash_ioctl(struct inode *inode, struct file *file,
 
     if(NULL == argp)
         return -EFAULT;
-        
     switch(cmd)
     {
         case READ_BDADDR_FROM_FLASH:
@@ -99,6 +98,31 @@ static int vflash_ioctl(struct inode *inode, struct file *file,
             
             kfree(tempBuf);
 #endif
+        }
+        break;
+        case READ_BPIMEI_FROM_FLASH:
+        {   
+            char *tempBuf = (char *)kmalloc(512, GFP_KERNEL);
+	    char imei_addr[16] = {0};
+            int i;
+
+            GetSNSectorInfo(tempBuf);
+
+            for(i=451; i<=466; i++)
+            {
+                DBG("tempBuf[%d]=%x\n", i-451, tempBuf[i]);
+		imei_addr[i-451] = tempBuf[i];
+            }
+
+            
+	    if(copy_to_user(argp, imei_addr, 16))
+			{
+			    printk("ERROR: copy_to_user---%s\n", __FUNCTION__);
+                kfree(tempBuf);
+			    return -EFAULT;
+            }
+            
+            kfree(tempBuf);
         }
         break;
         default:
