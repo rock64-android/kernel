@@ -7,6 +7,8 @@
 #include <asm/io.h>
 #include <mach/gpio.h>
 
+#include <asm/vfp.h>
+
 
 
 #if defined(CONFIG_RK29_SPI_INSRAM)
@@ -577,6 +579,64 @@ void pm_gpio_suspend(void)
 void pm_gpio_resume(void)
 {}
 #endif
+/*************************************neon powerdomain******************************/
+#define vfpreg(_vfp_) #_vfp_
+
+#define fmrx(_vfp_) ({			\
+	u32 __v;			\
+	asm("mrc p10, 7, %0, " vfpreg(_vfp_) ", cr0, 0 @ fmrx	%0, " #_vfp_	\
+	    : "=r" (__v) : : "cc");	\
+	__v;				\
+ })
+
+#define fmxr(_vfp_,_var_)		\
+	asm("mcr p10, 7, %0, " vfpreg(_vfp_) ", cr0, 0 @ fmxr	" #_vfp_ ", %0"	\
+	   : : "r" (_var_) : "cc")
+
+#define pmu_read(offset)		readl(RK29_PMU_BASE + (offset))
+#define pmu_write(offset, value)	writel((value), RK29_PMU_BASE + (offset))
+#define PMU_PG_CON 0x10
+extern void vfp_save_state(void *location, u32 fpexc);
+extern void vfp_load_state(void *location, u32 fpexc);
+ static u64 __sramdata saveptr[33]={};
+void  neon_powerdomain_off(void)
+{
+	int ret,i=0;
+	int *p;
+	p=&saveptr;
+	 unsigned int fpexc = fmrx(FPEXC);  //get neon Logic gate
+	 
+    	fmxr(FPEXC, fpexc | FPEXC_EN);  //open neon Logic gate
+  	for(i=0;i<34;i++){
+	vfp_save_state(p,fpexc);                        //save neon reg,32 D reg,2 control reg
+	p++;
+   	}  
+	fmxr(FPEXC, fpexc & ~FPEXC_EN);    //close neon Logic gate
+	
+	 ret=pmu_read(PMU_PG_CON);                   //get power domain state
+	pmu_write(PMU_PG_CON,ret|(0x1<<1));          //powerdomain off neon
+	
+}
+void   neon_powerdomain_on(void)
+{
+	int ret,i=0;
+	int *p;
+	p=&saveptr;
+		
+	ret=pmu_read(PMU_PG_CON);                   //get power domain state
+	pmu_write(PMU_PG_CON,ret&~(0x1<<1));                //powerdomain on neon
+	sram_udelay(5000,24);    
+	
+	unsigned int fpexc = fmrx(FPEXC);              //get neon Logic gate
+	fmxr(FPEXC, fpexc | FPEXC_EN);                   //open neon Logic gate
+	for(i=0;i<34;i++){
+	vfp_load_state(p,fpexc);   //recovery neon reg, 32 D reg,2 control reg
+	p++;
+	}
+    	fmxr(FPEXC, fpexc | FPEXC_EN);	    //open neon Logic gate
+
+}
+
 
 
 /*************************************************32k**************************************/

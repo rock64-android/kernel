@@ -347,12 +347,13 @@ static void dump_io_pull(void)
 }
 void pm_gpio_suspend(void);
 void pm_gpio_resume(void);
-
+void neon_powerdomain_off(void);
+void neon_powerdomain_on(void);
 int rk29_pm_enter(suspend_state_t state)
 {
 	u32 apll, cpll, gpll, mode, clksel0;
 	u32 clkgate[4];
-
+	neon_powerdomain_off();
 	// memory teseter
 	if (ddr_debug == 3)
 		ddr_testmode();
@@ -475,6 +476,7 @@ int rk29_pm_enter(suspend_state_t state)
 	sram_printascii("0\n");
 
 	dump_irq();
+	neon_powerdomain_on();
 	return 0;
 }
 static int rk29_pm_prepare(void)
