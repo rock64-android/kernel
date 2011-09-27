@@ -106,6 +106,20 @@ DeInitLed871x(
 	pLed->bLedBlinkInProgress = _FALSE;
 }
 
+//
+//	Description:
+//		Reset blinking status of LED_871x object.
+//
+static void
+ResetLedStatus(PLED_871x	pLed) {
+	pLed->bLedBlinkInProgress = _FALSE; // true if it is blinking, false o.w..
+	pLed->bLedNoLinkBlinkInProgress = _FALSE;
+	pLed->bLedLinkBlinkInProgress = _FALSE;
+	pLed->bLedStartToLinkBlinkInProgress = _FALSE;
+	pLed->bLedScanBlinkInProgress = _FALSE;
+	pLed->bLedWPSBlinkInProgress = _FALSE;
+	pLed->BlinkingLedState = LED_OFF; // Next state for blinking, either LED_ON or LED_OFF are.
+}
 
 //
 //	Description:
@@ -203,7 +217,7 @@ SwLedOff(
 
 	if((padapter->bSurpriseRemoved == _TRUE) || ( padapter->bDriverStopped == _TRUE))	
 	{
-             return;
+		goto exit;
 	}
 
 	if( 	(BOARD_MINICARD == pHalData->BoardType )||
@@ -284,7 +298,10 @@ SwLedOff(
 		}
 	}
 
+exit:
 	pLed->bLedOn = _FALSE;
+
+	ResetLedStatus(pLed);
 	
 }
 

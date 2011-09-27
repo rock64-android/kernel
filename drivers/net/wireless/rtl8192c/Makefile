@@ -164,6 +164,9 @@ rtl$(MODULE_NAME)-y += $(_HAL_INTFS_FILES)
 
 rtl$(MODULE_NAME)-y += $(_OS_INTFS_FILES)
 
+core/rtw_ioctl_set.o: core/rtw_ioctl_set.uu
+	@echo "UUDE    core/rtw_ioctl_set.uu"
+	@uudecode core/rtw_ioctl_set.uu -o core/rtw_ioctl_set.o
 
 rtl$(MODULE_NAME)-$(CONFIG_MP_INCLUDED) += core/rtw_mp.o \
 					core/rtw_mp_ioctl.o \

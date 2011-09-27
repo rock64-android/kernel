@@ -876,6 +876,7 @@ Default: 00b.
 #define EEPROM_TSSI_B_5G						0xBF
 #define EEPROM_TSSI_AB_5G						0xC0
 #define EEPROM_THERMAL_METER					0xC3	//[4:0]
+#define EEPROM_PATHDIV							0xC4
 #define EEPROM_RF_OPT1							0xC4
 #define EEPROM_RF_OPT2							0xC5
 #define EEPROM_RF_OPT3							0xC6
@@ -955,6 +956,7 @@ Default: 00b.
 #define EEPROM_TSSI_B_5G						0xBF
 #define EEPROM_TSSI_AB_5G						0xC0
 #define EEPROM_THERMAL_METER					0xC3	//[4:0]
+#define EEPROM_PATHDIV							0xC4
 #define EEPROM_RF_OPT1							0xC4
 #define EEPROM_RF_OPT2							0xC5
 #define EEPROM_RF_OPT3							0xC6
@@ -1713,6 +1715,7 @@ Current IOREG MAP
 
 // Only use CCK 1M rate for ACK
 #define RATE_RRSR_CCK_ONLY_1M		0xFFFF1
+#define RATE_RRSR_WITHOUT_CCK		0xFFFF0
 
 //2 TCR
 #define TSFRST						BIT(0)

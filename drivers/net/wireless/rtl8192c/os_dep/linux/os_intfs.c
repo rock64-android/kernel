@@ -110,7 +110,12 @@ int rtw_uapsd_acvo_en = 0;
 int rtw_ht_enable = 1;
 int rtw_cbw40_enable = 1;
 int rtw_ampdu_enable = 1;//for enable tx_ampdu
+int rtw_rx_stbc = 0;// default is disabled for IOT issue with bufflao's AP
+int rtw_ampdu_amsdu = 0;// 0: disabled, 1:enabled, 2:auto
 #endif
+
+int rtw_lowrate_two_xmit = 1;//Use 2 path Tx to transmit MCS0~7 and legacy mode
+
 //int rf_config = RF_1T2R;  // 1T2R	
 int rtw_rf_config = RF_819X_MAX_TYPE;  //auto
 int rtw_low_power = 0;
@@ -145,7 +150,7 @@ int rtw_hwpwrp_detect = 0; //HW power  ping detect 0:disable , 1:enable
 #endif
 
 #ifdef CONFIG_USB_HCI
-int rtw_hw_wps_pbc = 0; //There is no PBC hardware
+int rtw_hw_wps_pbc = 1;
 #else
 int rtw_hw_wps_pbc = 0;
 #endif
@@ -171,7 +176,12 @@ module_param(rtw_busy_thresh, int, 0644);
 module_param(rtw_ht_enable, int, 0644);
 module_param(rtw_cbw40_enable, int, 0644);
 module_param(rtw_ampdu_enable, int, 0644);
+module_param(rtw_rx_stbc, int, 0644);
+module_param(rtw_ampdu_amsdu, int, 0644);
 #endif
+
+module_param(rtw_lowrate_two_xmit, int, 0644);
+
 module_param(rtw_rf_config, int, 0644);
 module_param(rtw_power_mgnt, int, 0644);
 module_param(rtw_low_power, int, 0644);
@@ -512,8 +522,11 @@ _func_enter_;
 	registry_par->ht_enable = (u8)rtw_ht_enable;
 	registry_par->cbw40_enable = (u8)rtw_cbw40_enable;
 	registry_par->ampdu_enable = (u8)rtw_ampdu_enable;
+	registry_par->rx_stbc = (u8)rtw_rx_stbc;	
+	registry_par->ampdu_amsdu = (u8)rtw_ampdu_amsdu;
 #endif
 
+	registry_par->lowrate_two_xmit = (u8)rtw_lowrate_two_xmit;
 	registry_par->rf_config = (u8)rtw_rf_config;
 	registry_par->low_power = (u8)rtw_low_power;
 
@@ -985,7 +998,7 @@ _func_enter_;
 
 #ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
 	rtw_sreset_init(padapter);
-#endif//SILENT_RESET_FOR_SPECIFIC_PLATFOM
+#endif //SILENT_RESET_FOR_SPECIFIC_PLATFOM
 
 exit:
 	
@@ -1093,8 +1106,8 @@ static int netdev_open(struct net_device *pnetdev)
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 	struct pwrctrl_priv *pwrctrlpriv = &padapter->pwrctrlpriv;
 
-	RT_TRACE(_module_os_intfs_c_,_drv_info_,("+871x_drv - dev_open\n"));
-	//DBG_8192C("+871x_drv - drv_open, bup=%d\n", padapter->bup);
+	printk("+871x_drv - dev_open\n");
+	DBG_8192C("+871x_drv - drv_open, bup=%d\n", padapter->bup);
 
 	if(pwrctrlpriv->ps_flag == _TRUE){
 		padapter->net_closed = _FALSE;
@@ -1114,7 +1127,7 @@ static int netdev_open(struct net_device *pnetdev)
 			goto netdev_open_error;
 		}
 		
-		DBG_8192C("MAC Address = "MAC_FMT"\n", MAC_ARG(pnetdev->dev_addr));
+		printk("MAC Address = "MAC_FMT"\n", MAC_ARG(pnetdev->dev_addr));
 
 		
 		status=rtw_start_drv_threads(padapter);
@@ -1167,7 +1180,7 @@ static int netdev_open(struct net_device *pnetdev)
 netdev_open_normal_process:
 
 	RT_TRACE(_module_os_intfs_c_,_drv_info_,("-871x_drv - dev_open\n"));
-	//DBG_8192C("-871x_drv - drv_open, bup=%d\n", padapter->bup);
+	DBG_8192C("-871x_drv - drv_open, bup=%d\n", padapter->bup);
 		
 	return 0;
 	
@@ -1179,7 +1192,7 @@ netdev_open_error:
 	netif_stop_queue(pnetdev);
 	
 	RT_TRACE(_module_os_intfs_c_,_drv_err_,("-871x_drv - dev_open, fail!\n"));
-	//DBG_8192C("-871x_drv - drv_open fail, bup=%d\n", padapter->bup);
+	DBG_8192C("-871x_drv - drv_open fail, bup=%d\n", padapter->bup);
 	
 	return (-1);
 	
@@ -1290,7 +1303,7 @@ static int netdev_close(struct net_device *pnetdev)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 
-	RT_TRACE(_module_os_intfs_c_,_drv_info_,("+871x_drv - drv_close\n"));	
+	printk("+871x_drv - drv_close\n");	
 
 	if(padapter->pwrctrlpriv.bInternalAutoSuspend == _TRUE)
 	{
@@ -1310,7 +1323,7 @@ static int netdev_close(struct net_device *pnetdev)
 	}
 	else*/
 	if(padapter->pwrctrlpriv.rf_pwrstate == rf_on){
-		//DBG_8192C("(2)871x_drv - drv_close, bup=%d, hw_init_completed=%d\n", padapter->bup, padapter->hw_init_completed);
+		DBG_8192C("(2)871x_drv - drv_close, bup=%d, hw_init_completed=%d\n", padapter->bup, padapter->hw_init_completed);
 
 		//s1.
 		if(pnetdev)   
@@ -1335,7 +1348,7 @@ static int netdev_close(struct net_device *pnetdev)
 	}
 
 	RT_TRACE(_module_os_intfs_c_,_drv_info_,("-871x_drv - drv_close\n"));
-	//DBG_8192C("-871x_drv - drv_close, bup=%d\n", padapter->bup);
+	DBG_8192C("-871x_drv - drv_close, bup=%d\n", padapter->bup);
 	   
 	return 0;
 	

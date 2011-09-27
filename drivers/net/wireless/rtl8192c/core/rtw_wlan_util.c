@@ -689,7 +689,7 @@ void WMMOnAssocRsp(_adapter *padapter)
 				break;							
 		}
 		
-		//DBG_871X("WMM(%x): %x, %x\n", ACI, ACM, acParm);
+		DBG_871X("WMM(%x): %x, %x\n", ACI, ACM, acParm);
 	}
 	
 	return;	
@@ -887,7 +887,7 @@ void HTOnAssocRsp(_adapter *padapter)
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	WLAN_BSSID_EX 		*cur_network = &(pmlmeinfo->network);
 	
-	//DBG_871X("%s\n", __FUNCTION__);
+	DBG_871X("%s\n", __FUNCTION__);
 
 	if ((pmlmeinfo->HT_info_enable) && (pmlmeinfo->HT_caps_enable))
 	{
@@ -1297,39 +1297,39 @@ unsigned char check_assoc_AP(u8 *pframe, uint len)
 			case _VENDOR_SPECIFIC_IE_:
 				if ((_rtw_memcmp(pIE->data, ARTHEROS_OUI1, 3)) || (_rtw_memcmp(pIE->data, ARTHEROS_OUI2, 3)))
 				{
-					//DBG_871X("link to Artheros AP\n");
+					DBG_871X("link to Artheros AP\n");
 					return atherosAP;
 				}
 				else if ((_rtw_memcmp(pIE->data, BROADCOM_OUI1, 3))
 							|| (_rtw_memcmp(pIE->data, BROADCOM_OUI2, 3))
 							|| (_rtw_memcmp(pIE->data, BROADCOM_OUI2, 3)))
 				{
-					//DBG_871X("link to Broadcom AP\n");
+					DBG_871X("link to Broadcom AP\n");
 					return broadcomAP;
 				}
 				else if (_rtw_memcmp(pIE->data, MARVELL_OUI, 3))
 				{
-					//DBG_871X("link to Marvell AP\n");
+					DBG_871X("link to Marvell AP\n");
 					return marvellAP;
 				}
 				else if (_rtw_memcmp(pIE->data, RALINK_OUI, 3))
 				{
-					//DBG_871X("link to Ralink AP\n");
+					DBG_871X("link to Ralink AP\n");
 					return ralinkAP;
 				}
 				else if (_rtw_memcmp(pIE->data, CISCO_OUI, 3))
 				{
-					//DBG_871X("link to Cisco AP\n");
+					DBG_871X("link to Cisco AP\n");
 					return ciscoAP;
 				}
 				else if (_rtw_memcmp(pIE->data, REALTEK_OUI, 3))
 				{
-					//DBG_871X("link to Realtek 96B\n");
+					DBG_871X("link to Realtek 96B\n");
 					return realtekAP;
 				}
 				else if (_rtw_memcmp(pIE->data, AIRGOCAP_OUI,3))
 				{
-					//DBG_871X("link to Airgo Cap\n");
+					DBG_871X("link to Airgo Cap\n");
 					return airgocapAP;
 				}
 				else

@@ -1724,7 +1724,7 @@ dm_InitializeTXPowerTracking_ThermalMeter(
 	pdmpriv->TxPowerTrackControl = _TRUE;
 #endif
 	
-	//MSG_8192C("pdmpriv->TxPowerTrackControl = %d\n", pdmpriv->TxPowerTrackControl);
+	MSG_8192C("pdmpriv->TxPowerTrackControl = %d\n", pdmpriv->TxPowerTrackControl);
 }
 
 
@@ -3247,13 +3247,10 @@ static void dm_CheckPbcGPIO(_adapter *padapter)
 	if (tmp1byte == 0xff)
 		return ;
 
-#if 0 /* NO PBC button here */
 	if (tmp1byte&HAL_8192C_HW_GPIO_WPS_BIT)
 	{
 		bPbcPressed = _TRUE;
 	}
-#endif
-
 #else
 	tmp1byte = rtw_read8(padapter, GPIO_IN);
 	//RT_TRACE(COMP_IO, DBG_TRACE, ("dm_CheckPbcGPIO - %x\n", tmp1byte));
@@ -3651,7 +3648,7 @@ rtl8192c_dm_RF_Saving(
 			PHY_SetBBReg(pAdapter, 0xa74, 0xF000, 0x3); //RegA75[7:4]=0x3
 			PHY_SetBBReg(pAdapter, 0x818, BIT28, 0x0); //Reg818[28]=1'b0
 			PHY_SetBBReg(pAdapter, 0x818, BIT28, 0x1); //Reg818[28]=1'b1
-			//DBG_8192C("%s(): RF_Save\n", __FUNCTION__);
+			DBG_8192C("%s(): RF_Save\n", __FUNCTION__);
 		}
 		else
 		{
@@ -3660,7 +3657,7 @@ rtl8192c_dm_RF_Saving(
 			PHY_SetBBReg(pAdapter, rFPGA0_XCD_SwitchControl, 0xFF000000, pdmpriv->rf_saving_Reg85C);
 			PHY_SetBBReg(pAdapter, 0xa74, 0xF000, pdmpriv->rf_saving_RegA74);
 			PHY_SetBBReg(pAdapter, 0x818, BIT28, 0x0);
-			//DBG_8192C("%s(): RF_Normal\n", __FUNCTION__);
+			DBG_8192C("%s(): RF_Normal\n", __FUNCTION__);
 		}
 		pPSTable->PreRFState = pPSTable->CurRFState;
 	}

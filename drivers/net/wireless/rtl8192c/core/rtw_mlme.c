@@ -2788,7 +2788,7 @@ _func_enter_;
 		DBG_8192C("....AutoSuspend pwrctrlpriv.wepkeymask(%x)\n",adapter->pwrctrlpriv.wepkeymask);
 	}
 #endif
-	//DBG_8192C("==> rtw_set_key algorithm(%x),keyid(%x),key_mask(%x)\n",psetkeyparm->algorithm,psetkeyparm->keyid,pmlmepriv->key_mask);
+	DBG_8192C("==> rtw_set_key algorithm(%x),keyid(%x),key_mask(%x)\n",psetkeyparm->algorithm,psetkeyparm->keyid,pmlmepriv->key_mask);
 	RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("\n rtw_set_key: psetkeyparm->algorithm=%d psetkeyparm->keyid=(u8)keyid=%d \n",psetkeyparm->algorithm, keyid));
 
 	switch(psetkeyparm->algorithm){
@@ -3383,19 +3383,18 @@ void rtw_joinbss_reset(_adapter *padapter)
 	phtpriv->ampdu_enable = _FALSE;//reset to disabled
 
 #ifdef CONFIG_USB_HCI
+	// TH=1 => means that invalidate usb rx aggregation
+	// TH=0 => means that validate usb rx aggregation, use init value.
 	if(phtpriv->ht_option)
 	{
-		//validate  usb rx aggregation
-		//rtw_write8(padapter, 0x102500D9, 48);//TH = 48 pages, 6k
-		threshold = 48;
 		if(padapter->registrypriv.wifi_spec==1)		
-                     threshold = 1;
+			threshold = 1;
+		else
+			threshold = 0;
 		padapter->HalFunc.SetHwRegHandler(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
 	}
 	else
 	{
-		//invalidate  usb rx aggregation
-		//rtw_write8(padapter, 0x102500D9, 1);// TH=1 => means that invalidate usb rx aggregation
 		threshold = 1;
 		padapter->HalFunc.SetHwRegHandler(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
 	}
@@ -3449,13 +3448,17 @@ unsigned int rtw_restructure_ht_ie(_adapter *padapter, u8 *in_ie, u8 *out_ie, ui
 			padapter->HalFunc.GetHalDefVarHandler(padapter, HAL_DEF_RX_PACKET_OFFSET, &rx_packet_offset);
 			padapter->HalFunc.GetHalDefVarHandler(padapter, HAL_DEF_MAX_RECVBUF_SZ, &max_recvbuf_sz);
 			if(max_recvbuf_sz-rx_packet_offset>(8191-256)) {
-				//DBG_871X("%s IEEE80211_HT_CAP_MAX_AMSDU is set\n", __FUNCTION__);
+				DBG_871X("%s IEEE80211_HT_CAP_MAX_AMSDU is set\n", __FUNCTION__);
 				ht_capie.cap_info = ht_capie.cap_info |IEEE80211_HT_CAP_MAX_AMSDU;
 			}
 		}
 		
-		ht_capie.ampdu_params_info = (IEEE80211_HT_CAP_AMPDU_FACTOR&0x03) |
-										(IEEE80211_HT_CAP_AMPDU_DENSITY&0x00) ; 
+		ht_capie.ampdu_params_info = (IEEE80211_HT_CAP_AMPDU_FACTOR&0x03);
+
+		if(padapter->securitypriv.dot11PrivacyAlgrthm == _AES_ )
+			ht_capie.ampdu_params_info |= (IEEE80211_HT_CAP_AMPDU_DENSITY&(0x07<<2)); 
+		else
+			ht_capie.ampdu_params_info |= (IEEE80211_HT_CAP_AMPDU_DENSITY&0x00);										
 
 		
 		pframe = rtw_set_ie(out_ie+out_len, _HT_CAPABILITY_IE_, 
@@ -3593,7 +3596,7 @@ void rtw_issue_addbareq_cmd(_adapter *padapter, struct xmit_frame *pxmitframe)
  	struct sta_priv *pstapriv = &padapter->stapriv;	
 	s32 bmcst = IS_MCAST(pattrib->ra);
 
-	if(bmcst)
+	if(bmcst || (padapter->mlmepriv.LinkDetectInfo.bTxBusyTraffic == _FALSE))
 		return;
 	
 	priority = pattrib->priority;

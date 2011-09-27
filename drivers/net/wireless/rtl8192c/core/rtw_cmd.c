@@ -205,11 +205,13 @@ _func_enter_;
 	if (obj == NULL)
 		goto exit;
 
-	_enter_critical_bh(&queue->lock, &irqL);
+	//_enter_critical_bh(&queue->lock, &irqL);
+	_enter_critical(&queue->lock, &irqL);	
 
 	rtw_list_insert_tail(&obj->list, &queue->queue);
 
-	_exit_critical_bh(&queue->lock, &irqL);
+	//_exit_critical_bh(&queue->lock, &irqL);	
+	_exit_critical(&queue->lock, &irqL);
 
 exit:	
 
@@ -225,7 +227,8 @@ struct	cmd_obj	*_rtw_dequeue_cmd(_queue *queue)
 
 _func_enter_;
 
-	_enter_critical_bh(&(queue->lock), &irqL);
+	//_enter_critical_bh(&(queue->lock), &irqL);
+	_enter_critical(&(queue->lock), &irqL);
 
 	if (rtw_is_list_empty(&(queue->queue)))
 		obj = NULL;
@@ -235,7 +238,8 @@ _func_enter_;
 		rtw_list_delete(&obj->list);
 	}
 
-	_exit_critical_bh(&(queue->lock), &irqL);
+	//_exit_critical_bh(&(queue->lock), &irqL);
+	_exit_critical(&(queue->lock), &irqL);
 
 _func_exit_;	
 
@@ -419,7 +423,7 @@ _func_enter_;
 _next:
 		if ((padapter->bDriverStopped == _TRUE)||(padapter->bSurpriseRemoved== _TRUE))
 		{
-			//DBG_8192C("###> rtw_cmd_thread break.................\n");
+			DBG_8192C("###> rtw_cmd_thread break.................\n");
 			RT_TRACE(_module_rtl871x_cmd_c_, _drv_info_, ("rtw_cmd_thread:bDriverStopped(%d) OR bSurpriseRemoved(%d)", padapter->bDriverStopped, padapter->bSurpriseRemoved));		
 			break;
 		}
@@ -1625,7 +1629,7 @@ static void traffic_status_watchdog(_adapter *padapter)
 	u8	bEnterPS;
 #endif
 	u8	bBusyTraffic = _FALSE, bTxBusyTraffic = _FALSE, bRxBusyTraffic = _FALSE;
-	u8	bHigherBusyTraffic = _FALSE, bHigherBusyRxTraffic = _FALSE;
+	u8	bHigherBusyTraffic = _FALSE, bHigherBusyRxTraffic = _FALSE, bHigherBusyTxTraffic = _FALSE;
 	struct mlme_priv		*pmlmepriv = &(padapter->mlmepriv);
 
 	//
@@ -1640,9 +1644,10 @@ static void traffic_status_watchdog(_adapter *padapter)
 		{
 			bBusyTraffic = _TRUE;
 
-			if(pmlmepriv->LinkDetectInfo.NumRxOkInPeriod > pmlmepriv->LinkDetectInfo.NumTxOkInPeriod)
+			if(pmlmepriv->LinkDetectInfo.NumRxOkInPeriod > 100)
 				bRxBusyTraffic = _TRUE;
-			else if(pmlmepriv->LinkDetectInfo.NumTxOkInPeriod > pmlmepriv->LinkDetectInfo.NumRxOkInPeriod)
+
+			if(pmlmepriv->LinkDetectInfo.NumTxOkInPeriod > 100)
 				bTxBusyTraffic = _TRUE;
 		}
 
@@ -1655,8 +1660,10 @@ static void traffic_status_watchdog(_adapter *padapter)
 			// Extremely high Rx data.
 			if(pmlmepriv->LinkDetectInfo.NumRxOkInPeriod > 5000)
 				bHigherBusyRxTraffic = _TRUE;
-			else
-				bHigherBusyRxTraffic = _FALSE;
+
+			// Extremely high Tx data.
+			if(pmlmepriv->LinkDetectInfo.NumTxOkInPeriod > 5000)
+				bHigherBusyTxTraffic = _TRUE;
 		}
 		
 #ifdef CONFIG_LPS
@@ -1777,7 +1784,7 @@ _func_enter_;
 
 _func_exit_;
 }
-#endif
+
 u8 rtw_lps_ctrl_wk_cmd(_adapter*padapter, u8 lps_ctrl_type, u8 enqueue)
 {
 	struct cmd_obj	*ph2c;
@@ -1827,7 +1834,7 @@ _func_exit_;
 
 }
 
-
+#endif
 #ifdef CONFIG_ANTENNA_DIVERSITY
 
 void antenna_select_wk_hdl(_adapter *padapter, u8 antenna)

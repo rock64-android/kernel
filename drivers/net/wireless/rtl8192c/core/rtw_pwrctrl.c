@@ -44,15 +44,13 @@ void ips_enter(_adapter * padapter)
 	
 	pwrpriv->ips_enter_cnts++;	
 	DBG_8192C("==>ips_enter cnts:%d\n",pwrpriv->ips_enter_cnts);
+	
 	if(rf_off == pwrpriv->change_rfpwrstate )
 	{	
 		DBG_8192C("==>power_saving_ctrl_wk_hdl change rf to OFF...LED(0x%08x).... \n\n",rtw_read32(padapter,0x4c));
 		
-		if(pwrpriv->ips_mode == IPS_LEVEL_2) {
-			u8 rf_type;
-			padapter->HalFunc.GetHwRegHandler(padapter, HW_VAR_RF_TYPE, (u8 *)(&rf_type));
-			pwrpriv->bkeepfwalive = (  rf_type == RF_1T1R  )? _TRUE : _FALSE;//rtl8192cu cannot support IPS_Level2 ,must debug
-		}
+		if(pwrpriv->ips_mode == IPS_LEVEL_2)
+			pwrpriv->bkeepfwalive = _TRUE;
 		
 		rtw_ips_pwr_down(padapter);
 		pwrpriv->rf_pwrstate = rf_off;
@@ -112,10 +110,10 @@ int ips_leave(_adapter * padapter)
 extern void autosuspend_enter(_adapter* padapter);	
 extern int autoresume_enter(_adapter* padapter);
 #endif
+
 #ifdef SUPPORT_HW_RFOFF_DETECTED
 int rtw_hw_suspend(_adapter *padapter );
 int rtw_hw_resume(_adapter *padapter);
-
 #endif
 
 #ifdef PLATFORM_LINUX
@@ -160,7 +158,7 @@ void rtw_ps_processor(_adapter*padapter)
 			}			
 		}
 		else
-	#endif
+	#endif //CONFIG_AUTOSUSPEND
 		{
 			rfpwrstate = RfOnOffDetect(padapter);
 			DBG_8192C("@@@@- #2  %s==> rfstate:%s \n",__FUNCTION__,(rfpwrstate==rf_on)?"rf_on":"rf_off");
@@ -184,8 +182,8 @@ void rtw_ps_processor(_adapter*padapter)
 		}
 		pwrpriv->pwr_state_check_cnts ++;	
 	}
-	
-#endif
+#endif //SUPPORT_HW_RFOFF_DETECTED
+
 	if( pwrpriv->power_mgnt == PS_MODE_ACTIVE )	return;
 
 	if((pwrpriv->rf_pwrstate == rf_on) && ((pwrpriv->pwr_state_check_cnts%4)==0))
@@ -195,9 +193,9 @@ void rtw_ps_processor(_adapter*padapter)
 			(check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE) ||
 			(check_fwstate(pmlmepriv, WIFI_ADHOC_STATE) == _TRUE) ||
 			(padapter->bup == _FALSE)	
-#ifdef CONFIG_P2P
+			#ifdef CONFIG_P2P
 			|| (pwdinfo->p2p_state != P2P_STATE_NONE)
-#endif //CONFIG_P2P
+			#endif //CONFIG_P2P
 		)
 		{
 			return;
@@ -206,7 +204,7 @@ void rtw_ps_processor(_adapter*padapter)
 		DBG_8192C("==>%s .fw_state(%x)\n",__FUNCTION__,get_fwstate(pmlmepriv));
 		pwrpriv->change_rfpwrstate = rf_off;
 
-#ifdef CONFIG_AUTOSUSPEND
+		#ifdef CONFIG_AUTOSUSPEND
 		if(padapter->registrypriv.usbss_enable)
 		{		
 			if(padapter->pwrctrlpriv.bHWPwrPindetect) 
@@ -222,11 +220,11 @@ void rtw_ps_processor(_adapter*padapter)
 		{
 		}
 		else
-#endif	
+		#endif //CONFIG_AUTOSUSPEND
 		{
-#ifdef CONFIG_IPS	
+			#ifdef CONFIG_IPS	
 			ips_enter(padapter);			
-#endif
+			#endif
 		}
 	}
 
@@ -636,7 +634,7 @@ _func_enter_;
 	pwrctrlpriv->ips_mode = padapter->registrypriv.ips_mode;
 	pwrctrlpriv->ips_mode_req = padapter->registrypriv.ips_mode;
 
-	pwrctrlpriv->pwr_state_check_inverval = 2000;
+	pwrctrlpriv->pwr_state_check_interval = 2000;
 	pwrctrlpriv->pwr_state_check_cnts = 0;
 	pwrctrlpriv->bInternalAutoSuspend = _FALSE;
 	pwrctrlpriv->bInSuspend = _FALSE;
@@ -644,7 +642,7 @@ _func_enter_;
 	
 #ifdef CONFIG_AUTOSUSPEND	
 #ifdef SUPPORT_HW_RFOFF_DETECTED
-	pwrctrlpriv->pwr_state_check_inverval = (pwrctrlpriv->bHWPwrPindetect) ?1000:2000;		
+	pwrctrlpriv->pwr_state_check_interval = (pwrctrlpriv->bHWPwrPindetect) ?1000:2000;		
 #endif	
 #endif
 	
@@ -1042,7 +1040,7 @@ static void rtw_late_resume(struct early_suspend *h)
 
 void rtw_register_early_suspend(struct pwrctrl_priv *pwrpriv)
 {
-	//DBG_871X("%s\n", __FUNCTION__);
+	DBG_871X("%s\n", __FUNCTION__);
 
 	//jeff: set the early suspend level before blank screen, so we wll do late resume after scree is lit
 	pwrpriv->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 20;
@@ -1095,7 +1093,7 @@ static void rtw_late_resume(android_early_suspend_t *h)
 
 void rtw_register_early_suspend(struct pwrctrl_priv *pwrpriv)
 {
-//	DBG_871X("%s\n", __FUNCTION__);
+	DBG_871X("%s\n", __FUNCTION__);
 
 	//jeff: set the early suspend level before blank screen, so we wll do late resume after scree is lit
 	pwrpriv->early_suspend.level = ANDROID_EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 20;

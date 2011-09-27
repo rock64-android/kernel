@@ -155,6 +155,15 @@ struct tx_invite_resp_info{
 	u8					token;	//	Used to record the dialog token of p2p invitation request frame.
 };
 
+#ifdef CONFIG_WFD
+
+struct wifi_display_info{
+	u16					rtsp_ctrlport;		//	TCP port number at which the this WFD device listens for RTSP messages
+	u16					peer_rtsp_ctrlport;	//	TCP port number at which the peer WFD device listens for RTSP messages
+											//	This filed should be filled when receiving the gropu negotiation request
+};
+#endif //CONFIG_WFD
+
 struct tx_provdisc_req_info{
 	u16					wps_config_method_request;	//	Used when sending the provisioning request frame
 	u16					peer_channel_num[2];		//	The channel number which the receiver stands.
@@ -189,6 +198,9 @@ struct wifidirect_info{
 	struct profile_info			profileinfo[ P2P_MAX_PERSISTENT_GROUP_NUM ];	//	Store the profile information of persistent group
 	struct tx_invite_resp_info	inviteresp_info;
 	struct tx_nego_req_info	nego_req_info;
+#ifdef CONFIG_WFD
+	struct wifi_display_info		wfd_info;
+#endif
 	enum P2P_ROLE			role;
 	enum P2P_STATE			pre_p2p_state;
 	enum P2P_STATE			p2p_state;

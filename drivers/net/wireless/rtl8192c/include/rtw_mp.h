@@ -17,6 +17,7 @@
  *
  *
  ******************************************************************************/
+
 #ifndef _RTW_MP_H_
 #define _RTW_MP_H_
 
@@ -590,6 +591,9 @@ extern void mp_stop_test(PADAPTER padapter);
 //extern u8	set_bb_reg(PADAPTER Adapter, u16 offset, u32 bitmask, u32 value);
 //extern u32	get_rf_reg(PADAPTER Adapter, u8 path, u8 offset, u32 bitmask);
 //extern u8	set_rf_reg(PADAPTER Adapter, u8 path, u8 offset, u32 bitmask, u32 value);
+
+extern u32 _read_rfreg(PADAPTER padapter, u8 rfpath, u32 addr, u32 bitmask);
+extern void _write_rfreg(PADAPTER padapter, u8 rfpath, u32 addr, u32 bitmask, u32 val);
 
 extern u32 read_macreg(_adapter *padapter, u32 addr, u32 sz);
 extern void write_macreg(_adapter *padapter, u32 addr, u32 val, u32 sz);

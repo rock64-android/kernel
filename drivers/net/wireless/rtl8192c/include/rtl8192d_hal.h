@@ -457,6 +457,9 @@ struct hal_data_8192de
 	BOOLEAN		bSupportRemoteWakeUp;
 	u8	AutoLoadStatusFor8192D;
 
+	BOOLEAN       bMasterOfDMSP;
+	BOOLEAN       bSlaveOfDMSP;
+
 	u16	CustomerID;
 
 	u16	FirmwareVersion;
@@ -651,10 +654,9 @@ struct hal_data_8192du
 
 	BOOLEAN		bSupportRemoteWakeUp;
 
-#if (RTL8192D_DUAL_MAC_MODE_SWITCH == 1)
 	BOOLEAN       bMasterOfDMSP;
 	BOOLEAN       bSlaveOfDMSP;
-
+#if (RTL8192D_DUAL_MAC_MODE_SWITCH == 1)
 	PADAPTER	BuddyAdapter;
 #endif
 
@@ -854,4 +856,37 @@ void rtl8192d_free_hal_data(_adapter * padapter);
 void rtl8192d_set_hal_ops(struct hal_ops *pHalFunc);
 
 #endif
+
+#ifdef CONFIG_MP_INCLUDED
+
+
+extern void Hal_SetAntenna(PADAPTER pAdapter);
+extern void Hal_SetBandwidth(PADAPTER pAdapter);
+
+extern void Hal_SetTxPower(PADAPTER pAdapter);
+extern void Hal_SetCarrierSuppressionTx(PADAPTER pAdapter, u8 bStart);
+extern void Hal_SetSingleToneTx ( PADAPTER pAdapter , u8 bStart );
+extern void Hal_SetSingleCarrierTx (PADAPTER pAdapter, u8 bStart);
+extern void Hal_SetContinuousTx (PADAPTER pAdapter, u8 bStart);
+extern void Hal_SetBandwidth(PADAPTER pAdapter);
+
+extern void Hal_SetDataRate(PADAPTER pAdapter);
+extern void Hal_SetChannel(PADAPTER pAdapter);
+extern void Hal_SetAntennaPathPower(PADAPTER pAdapter);
+extern s32 Hal_SetThermalMeter(PADAPTER pAdapter, u8 target_ther);
+extern s32 Hal_SetPowerTracking(PADAPTER padapter, u8 enable);
+extern void Hal_GetPowerTracking(PADAPTER padapter, u8 * enable);
+extern void Hal_GetThermalMeter(PADAPTER pAdapter, u8 *value);
+extern void Hal_mpt_SwitchRfSetting(PADAPTER pAdapter);
+extern void Hal_MPT_CCKTxPowerAdjust(PADAPTER Adapter, BOOLEAN bInCH14);
+extern void Hal_MPT_CCKTxPowerAdjustbyIndex(PADAPTER pAdapter, BOOLEAN beven);
+extern void Hal_SetCCKTxPower(PADAPTER pAdapter, u8 * TxPower);
+extern void Hal_SetOFDMTxPower(PADAPTER pAdapter, u8 * TxPower);
+extern void Hal_TriggerRFThermalMeter(PADAPTER pAdapter);
+extern u8 Hal_ReadRFThermalMeter(PADAPTER pAdapter);
+extern void Hal_SetCCKContinuousTx(PADAPTER pAdapter, u8 bStart);
+extern void Hal_SetOFDMContinuousTx(PADAPTER pAdapter, u8 bStart);
+
+
+#endif //end CONFIG_MP_INCLUDED
 

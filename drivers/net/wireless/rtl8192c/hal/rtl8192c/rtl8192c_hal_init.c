@@ -53,11 +53,11 @@ int storeAdaptorInfoFile(struct eeprom_priv * eeprom_priv, char *path)
 	if(eeprom_priv) {
 		
 		if( 0 == (ret=openFile(&fp, path, O_CREAT|O_WRONLY, 0666)) ) {
-			//DBG_8192C("%s openFile path:%s fp=%p\n",__FUNCTION__, path ,fp);
+			DBG_8192C("%s openFile path:%s fp=%p\n",__FUNCTION__, path ,fp);
 
 			oldfs = get_fs(); set_fs(get_ds());
 			if( EEPROM_MAX_SIZE==(ret=writeFile(fp, eeprom_priv->efuse_eeprom_data, EEPROM_MAX_SIZE)) ) {
-				//DBG_8192C("%s writeFile OK\n",__FUNCTION__);
+				DBG_8192C("%s writeFile OK\n",__FUNCTION__);
 				ret = 0;		
 			} else {
 				DBG_8192C("%s writeFile Fail, ret:%d\n",__FUNCTION__, ret);
@@ -70,7 +70,7 @@ int storeAdaptorInfoFile(struct eeprom_priv * eeprom_priv, char *path)
 		}
 		
 	} else {
-		//DBG_8192C("%s NULL pointer\n",__FUNCTION__);
+		DBG_8192C("%s NULL pointer\n",__FUNCTION__);
 		ret =  -EINVAL;
 	}
 	return ret;
@@ -85,11 +85,11 @@ int retriveAdaptorInfoFile(struct eeprom_priv * eeprom_priv, char *path)
 	if(eeprom_priv) {
 		
 		if( 0 == (ret=openFile(&fp,path, O_RDONLY, 0)) ){
-			//DBG_8192C("%s openFile path:%s fp=%p\n",__FUNCTION__, path ,fp);
+			DBG_8192C("%s openFile path:%s fp=%p\n",__FUNCTION__, path ,fp);
 
 			oldfs = get_fs(); set_fs(get_ds());
 			if( EEPROM_MAX_SIZE==(ret=readFile(fp, eeprom_priv->efuse_eeprom_data, EEPROM_MAX_SIZE)) ) {
-				//DBG_8192C("%s readFile OK\n",__FUNCTION__);
+				DBG_8192C("%s readFile OK\n",__FUNCTION__);
 				ret = 0;		
 			} else {
 				DBG_8192C("%s readFile Fai, ret:%dl\n",__FUNCTION__, ret);
@@ -109,7 +109,7 @@ int retriveAdaptorInfoFile(struct eeprom_priv * eeprom_priv, char *path)
 		}
 		#endif
 	} else {
-		//DBG_8192C("%s NULL pointer\n",__FUNCTION__);
+		DBG_8192C("%s NULL pointer\n",__FUNCTION__);
 		ret = -EINVAL;
 	}
 	return ret;
@@ -191,13 +191,15 @@ _FWDownloadEnable(
 #define MAX_REG_BOLCK_SIZE	196
 #define MIN_REG_BOLCK_SIZE	8
 
-static VOID
+static int
 _BlockWrite(
 	IN		PADAPTER		Adapter,
 	IN		PVOID		buffer,
 	IN		u32			size
 	)
 {
+	int ret = _SUCCESS;
+
 #ifdef CONFIG_PCI_HCI
 	u32			blockSize	= sizeof(u32);	// Use 4-byte write to download FW
 	u8			*bufferPtr	= (u8 *)buffer;
@@ -239,10 +241,13 @@ _BlockWrite(
 	for(i = 0 ; i < blockCount ; i++){
 		offset = i * blockSize;
 		#ifdef SUPPORTED_BLOCK_IO
-		rtw_writeN(Adapter, (FW_8192C_START_ADDRESS + offset), blockSize, (bufferPtr + offset));
+		ret = rtw_writeN(Adapter, (FW_8192C_START_ADDRESS + offset), blockSize, (bufferPtr + offset));
 		#else
-		rtw_write32(Adapter, (FW_8192C_START_ADDRESS + offset), le32_to_cpu(*(pu4BytePtr + i)));
+		ret = rtw_write32(Adapter, (FW_8192C_START_ADDRESS + offset), le32_to_cpu(*(pu4BytePtr + i)));
 		#endif
+
+		if(ret == _FAIL)
+			goto exit;
 	}
 
 	if(remainSize){
@@ -253,10 +258,13 @@ _BlockWrite(
 		for(i = 0 ; i < blockCount ; i++){
 			offset = offset2 + i * blockSize2;
 			#ifdef SUPPORTED_BLOCK_IO
-			rtw_writeN(Adapter, (FW_8192C_START_ADDRESS + offset), blockSize2, (bufferPtr + offset));
+			ret = rtw_writeN(Adapter, (FW_8192C_START_ADDRESS + offset), blockSize2, (bufferPtr + offset));
 			#else
-			rtw_write8(Adapter, (FW_8192C_START_ADDRESS + offset ), *(bufferPtr + offset));
+			ret = rtw_write8(Adapter, (FW_8192C_START_ADDRESS + offset ), *(bufferPtr + offset));
 			#endif
+
+			if(ret == _FAIL)
+				goto exit;
 		}		
 
 		if(remainSize2)
@@ -265,14 +273,20 @@ _BlockWrite(
 			bufferPtr += offset;
 			
 			for(i = 0 ; i < remainSize2 ; i++){
-				rtw_write8(Adapter, (FW_8192C_START_ADDRESS + offset + i), *(bufferPtr + i));
+				ret = rtw_write8(Adapter, (FW_8192C_START_ADDRESS + offset + i), *(bufferPtr + i));
+
+				if(ret == _FAIL)
+					goto exit;
 			}
 		}
 	}
 #endif
+
+exit:
+	return ret;
 }
 
-static VOID
+static int
 _PageWrite(
 	IN		PADAPTER	Adapter,
 	IN		u32			page,
@@ -285,7 +299,7 @@ _PageWrite(
 
 	value8 = (rtw_read8(Adapter, REG_MCUFWDL+2)& 0xF8 ) | u8Page ;
 	rtw_write8(Adapter, REG_MCUFWDL+2,value8);
-	_BlockWrite(Adapter,buffer,size);
+	return _BlockWrite(Adapter,buffer,size);
 }
 
 static VOID
@@ -308,7 +322,7 @@ _FillDummy(
 	*pFwLen = FwLen;
 }
 
-static VOID
+static int
 _WriteFW(
 	IN		PADAPTER		Adapter,
 	IN		PVOID			buffer,
@@ -318,6 +332,7 @@ _WriteFW(
 	// Since we need dynamic decide method of dwonload fw, so we call this function to get chip version.
 	// We can remove _ReadChipVersion from ReadAdapterInfo8192C later.
 
+	int ret = _SUCCESS;
 	BOOLEAN			isNormalChip;	
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);	
 	
@@ -340,19 +355,31 @@ _WriteFW(
 		
 		for(page = 0; page < pageNums;  page++){
 			offset = page *MAX_PAGE_SIZE;
-			_PageWrite(Adapter,page, (bufferPtr+offset),MAX_PAGE_SIZE);			
+			ret = _PageWrite(Adapter,page, (bufferPtr+offset),MAX_PAGE_SIZE);			
+			
+			if(ret == _FAIL)
+				goto exit;
 		}
 		if(remainSize){
 			offset = pageNums *MAX_PAGE_SIZE;
 			page = pageNums;
-			_PageWrite(Adapter,page, (bufferPtr+offset),remainSize);
+			ret = _PageWrite(Adapter,page, (bufferPtr+offset),remainSize);
+
+			if(ret == _FAIL)
+				goto exit;
 		}	
 		//RT_TRACE(COMP_INIT, DBG_LOUD, ("_WriteFW Done- for Normal chip.\n"));
 	}
 	else	{
-		_BlockWrite(Adapter,buffer,size);
+		ret = _BlockWrite(Adapter,buffer,size);
+
+		if(ret == _FAIL)
+			goto exit;
 		//RT_TRACE(COMP_INIT, DBG_LOUD, ("_WriteFW Done- for Test chip.\n"));
 	}
+
+exit:
+	return ret;
 }
 
 static int _FWFreeToGo(
@@ -369,8 +396,10 @@ static int _FWFreeToGo(
 	}while((counter ++ < POLLING_READY_TIMEOUT_COUNT) && (!(value32 & FWDL_ChkSum_rpt)));	
 
 	if(counter >= POLLING_READY_TIMEOUT_COUNT){	
-		DBG_8192C("chksum report faill ! REG_MCUFWDL:0x%08x .\n",value32);
+		DBG_8192C("chksum report faill ! REG_MCUFWDL:0x%08x\n",value32);
 		return _FAIL;
+	} else {
+		//DBG_8192C("chksum report success ! REG_MCUFWDL:0x%08x, counter:%u\n",value32, counter);
 	}
 	//RT_TRACE(COMP_INIT, DBG_LOUD, ("Checksum report OK ! REG_MCUFWDL:0x%08x .\n",value32));
 
@@ -397,9 +426,9 @@ POLLING_FW_READY:
 
 	if(restarted == _FALSE) {
 		u8 tmp = rtw_read8(Adapter, REG_SYS_FUNC_EN+1);
-		//DBG_8192C("Reset 51 write8 REG_SYS_FUNC_EN:0x%04x\n", tmp & ~BIT2);
+		DBG_8192C("Reset 51 write8 REG_SYS_FUNC_EN:0x%04x\n", tmp & ~BIT2);
 		rtw_write8(Adapter, REG_SYS_FUNC_EN+1, tmp & ~BIT2);
-		//DBG_8192C("Reset 51 write8 REG_SYS_FUNC_EN:0x%04x\n", tmp|BIT2);
+		DBG_8192C("Reset 51 write8 REG_SYS_FUNC_EN:0x%04x\n", tmp|BIT2);
 		rtw_write8(Adapter, REG_SYS_FUNC_EN+1, tmp|BIT2);
 		restarted = _TRUE;
 		goto POLLING_FW_READY;
@@ -451,7 +480,7 @@ rtl8192c_FirmwareSelfReset(
 			rtw_write8(Adapter,REG_SYS_FUNC_EN+1,(rtw_read8(Adapter, REG_SYS_FUNC_EN+1)&~BIT2));
 		}
 
-		//DBG_8192C("%s =====> 8051 reset success (%d) .\n", __FUNCTION__ ,Delay);
+		DBG_8192C("%s =====> 8051 reset success (%d) .\n", __FUNCTION__ ,Delay);
 	}
 }
 
@@ -465,6 +494,7 @@ int FirmwareDownload92C(
 )
 {	
 	int	rtStatus = _SUCCESS;	
+	u8 writeFW_retry = 0;
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	s8 			R92CFwImageFileName_TSMC[] ={RTL8192C_FW_TSMC_IMG};
 	s8 			R92CFwImageFileName_UMC[] ={RTL8192C_FW_UMC_IMG};
@@ -498,7 +528,7 @@ int FirmwareDownload92C(
 			pFwImageFileName = R92CFwImageFileName_UMC;
 			FwImage = Rtl819XFwUMCACutImageArray;
 			FwImageLen = UMCACutImgArrayLength;
-			//DBG_8192C(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_UMC\n");
+			DBG_8192C(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_UMC\n");
 		}
 		else if(IS_81xxC_VENDOR_UMC_B_CUT(pHalData->VersionID))
 		{
@@ -506,14 +536,14 @@ int FirmwareDownload92C(
 			pFwImageFileName = R92CFwImageFileName_UMC_B;
 			FwImage = Rtl819XFwUMCBCutImageArray;
 			FwImageLen = UMCBCutImgArrayLength;
-			//DBG_8192C(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_UMC_B\n");
+			DBG_8192C(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_UMC_B\n");
 		}
 		else
 		{
 			pFwImageFileName = R92CFwImageFileName_TSMC;
 			FwImage = Rtl819XFwTSMCImageArray;
 			FwImageLen = TSMCImgArrayLength;
-			//DBG_8192C(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_TSMC\n");
+			DBG_8192C(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_TSMC\n");
 		}
 	}
 	else
@@ -565,8 +595,8 @@ int FirmwareDownload92C(
 	//RT_TRACE(COMP_INIT, DBG_LOUD, (" FirmwareVersion(%#x), Signature(%#x)\n", 
 	//	Adapter->MgntInfo.FirmwareVersion, pFwHdr->Signature));
 
-	//DBG_8192C("fw_ver=v%d, fw_subver=%d, sig=0x%x\n", 
-		//pHalData->FirmwareVersion, pHalData->FirmwareSubVersion, le16_to_cpu(pFwHdr->Signature)&0xFFF0);
+	DBG_8192C("fw_ver=v%d, fw_subver=%d, sig=0x%x\n", 
+		pHalData->FirmwareVersion, pHalData->FirmwareSubVersion, le16_to_cpu(pFwHdr->Signature)&0xFFF0);
 
 	if(IS_FW_HEADER_EXIST(pFwHdr))
 	{
@@ -585,8 +615,29 @@ int FirmwareDownload92C(
 
 		
 	_FWDownloadEnable(Adapter, _TRUE);
-	_WriteFW(Adapter, pFirmwareBuf, FirmwareLen);
+	while(1) {
+		u8 tmp8;
+		tmp8 = rtw_read8(Adapter, REG_MCUFWDL);
+		
+		//reset the FWDL chksum
+		rtw_write8(Adapter, REG_MCUFWDL, tmp8|FWDL_ChkSum_rpt);
+		
+		//tmp8 = rtw_read8(Adapter, REG_MCUFWDL);
+		//DBG_8192C("Before _WriteFW, REG_MCUFWDL:0x%02x, writeFW_retry:%u\n", tmp8, writeFW_retry);
+		
+		rtStatus = _WriteFW(Adapter, pFirmwareBuf, FirmwareLen);
+		
+		//tmp8 = rtw_read8(Adapter, REG_MCUFWDL);
+		//DBG_8192C("After _WriteFW, REG_MCUFWDL:0x%02x, rtStatus:%d\n", tmp8, rtStatus);
+
+		if(rtStatus == _SUCCESS || ++writeFW_retry>3)
+			break;
+	} 
 	_FWDownloadEnable(Adapter, _FALSE);
+	if(_SUCCESS != rtStatus){
+		DBG_8192C("DL Firmware failed!\n");
+		goto Exit;
+	}
 
 	rtStatus = _FWFreeToGo(Adapter);
 	if(_SUCCESS != rtStatus){
@@ -644,7 +695,7 @@ static void _update_bt_param(_adapter *padapter)
 	pbtpriv->BT_Ampdu = registry_par->bt_ampdu;
 	pbtpriv->bCOBT = _TRUE;
 #if 1
-	//DBG_8192C("BT Coexistance = %s\n", (pbtpriv->BT_Coexist==_TRUE)?"enable":"disable");
+	DBG_8192C("BT Coexistance = %s\n", (pbtpriv->BT_Coexist==_TRUE)?"enable":"disable");
 	if(pbtpriv->BT_Coexist)
 	{
 		if(pbtpriv->BT_Ant_Num == Ant_x2)
@@ -932,7 +983,7 @@ rtl8192c_ReadChipVersion(
 	else
 		pHalData->rf_type = RF_1T1R;
 
-	//MSG_8192C("RF_Type is %x!!\n", pHalData->rf_type);
+	MSG_8192C("RF_Type is %x!!\n", pHalData->rf_type);
 
 	return ChipVersion;
 }
@@ -976,7 +1027,7 @@ u8 GetEEPROMSize8192C(PADAPTER Adapter)
 	curRCR = rtw_read16(Adapter, REG_9346CR);
 	size = (curRCR & BOOT_FROM_EEPROM) ? 6 : 4; // 6: EEPROM used is 93C46, 4: boot from E-Fuse.
 	
-	//MSG_8192C("EEPROM type is %s\n", size==4 ? "E-FUSE" : "93C46");
+	MSG_8192C("EEPROM type is %s\n", size==4 ? "E-FUSE" : "93C46");
 	
 	return size;
 }
@@ -1021,11 +1072,11 @@ void rtl8192c_free_hal_data(_adapter * padapter)
 {
 _func_enter_;
 
-	//DBG_8192C("=====> rtl8192c_free_hal_data =====\n");
+	DBG_8192C("=====> rtl8192c_free_hal_data =====\n");
 
 	if(padapter->HalData)
 		rtw_mfree(padapter->HalData, sizeof(HAL_DATA_TYPE));
-	//DBG_8192C("<===== rtl8192c_free_hal_data =====\n");
+	DBG_8192C("<===== rtl8192c_free_hal_data =====\n");
 
 _func_exit_;
 }
@@ -3475,7 +3526,7 @@ rtl8192c_EfuseParseIDCode(
 	
 	// Checl 0x8129 again for making sure autoload status!!
 	EEPROMId = *((u16 *)&hwinfo[0]);
-	if( EEPROMId != RTL_EEPROM_ID)
+	if( le16_to_cpu(EEPROMId) != RTL_EEPROM_ID)
 	{
 		DBG_8192C("EEPROM ID(%#x) is invalid!!\n", EEPROMId);
 		pEEPROM->bautoload_fail_flag = _TRUE;

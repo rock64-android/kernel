@@ -635,8 +635,7 @@ void rtw_dump_xframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 	    (pxmitframe->attrib.ether_type != 0x888e) &&
 	    (pxmitframe->attrib.dhcp_pkt != 1))
 	{
-		if(padapter->mlmepriv.LinkDetectInfo.bBusyTraffic == _TRUE)
-			rtw_issue_addbareq_cmd(padapter, pxmitframe);
+		rtw_issue_addbareq_cmd(padapter, pxmitframe);
 	}
 	
 	mem_addr = pxmitframe->buf_addr;
@@ -951,8 +950,7 @@ s32 rtl8192cu_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 	    (pfirstframe->attrib.ether_type != 0x888e) &&
 	    (pfirstframe->attrib.dhcp_pkt != 1))
 	{
-		if(padapter->mlmepriv.LinkDetectInfo.bBusyTraffic == _TRUE)
-			rtw_issue_addbareq_cmd(padapter, pfirstframe);
+		rtw_issue_addbareq_cmd(padapter, pfirstframe);
 	}
 
 #ifndef CONFIG_USE_USB_BUFFER_ALLOC_TX

@@ -332,18 +332,12 @@ phy_RFSerialRead(
 	
 	PHY_SetBBReg(Adapter, rFPGA0_XA_HSSIParameter2, bMaskDWord, tmplong&(~bLSSIReadEdge));	
 	rtw_udelay_os(10);// PlatformStallExecution(10);
-	//rtw_mdelay_os(1);
 	
 	PHY_SetBBReg(Adapter, pPhyReg->rfHSSIPara2, bMaskDWord, tmplong2);	
 	rtw_udelay_os(100);//PlatformStallExecution(100);
-	//rtw_mdelay_os(1);
 	
 	PHY_SetBBReg(Adapter, rFPGA0_XA_HSSIParameter2, bMaskDWord, tmplong|bLSSIReadEdge);	
 	rtw_udelay_os(10);//PlatformStallExecution(10);
-	//rtw_mdelay_os(1);
-
-	PHY_SetBBReg(Adapter, rFPGA0_XA_HSSIParameter2, bMaskDWord, tmplong&(~bLSSIReadEdge));	
-	rtw_udelay_os(10);// PlatformStallExecution(10);
 
 	if(eRFPath == RF90_PATH_A)
 		RfPiEnable = (u8)PHY_QueryBBReg(Adapter, rFPGA0_XA_HSSIParameter1, BIT8);
@@ -3479,7 +3473,7 @@ _PHY_PathAFillIQKMatrix(
 	u32	Oldval_0, X, TX0_A, reg;
 	int	Y, TX0_C;
 	
-	//DBG_8192C("Path A IQ Calibration %s !\n",(bIQKOK)?"Success":"Failed");
+	DBG_8192C("Path A IQ Calibration %s !\n",(bIQKOK)?"Success":"Failed");
 
 	if(final_candidate == 0xFF)
 		return;
@@ -3885,7 +3879,7 @@ _PHY_IQCalibrate(
 	for(i = 0 ; i < retryCount ; i++){
 		PathAOK = _PHY_PathA_IQK(pAdapter, is2T);
 		if(PathAOK == 0x03){
-				//DBG_8192C("Path A IQK Success!!\n");
+				DBG_8192C("Path A IQK Success!!\n");
 				result[t][0] = (PHY_QueryBBReg(pAdapter, 0xe94, bMaskDWord)&0x3FF0000)>>16;
 				result[t][1] = (PHY_QueryBBReg(pAdapter, 0xe9c, bMaskDWord)&0x3FF0000)>>16;
 				result[t][2] = (PHY_QueryBBReg(pAdapter, 0xea4, bMaskDWord)&0x3FF0000)>>16;
@@ -3894,7 +3888,7 @@ _PHY_IQCalibrate(
 		}
 		else if (i == (retryCount-1) && PathAOK == 0x01)	//Tx IQK OK
 		{
-			//DBG_8192C("Path A IQK Only  Tx Success!!\n");
+			DBG_8192C("Path A IQK Only  Tx Success!!\n");
 			
 			result[t][0] = (PHY_QueryBBReg(pAdapter, 0xe94, bMaskDWord)&0x3FF0000)>>16;
 			result[t][1] = (PHY_QueryBBReg(pAdapter, 0xe9c, bMaskDWord)&0x3FF0000)>>16;			
@@ -5142,7 +5136,7 @@ rtl8192c_PHY_IQCalibrate(
 		_PHY_ReloadADDARegisters(pAdapter, IQK_BB_REG, pdmpriv->IQK_BB_backup_recover, 9);
 		return;
 	}
-	//DBG_8192C("IQK:Start!!!\n");
+	DBG_8192C("IQK:Start!!!\n");
 
 	for(i = 0; i < 8; i++)
 	{
@@ -5227,8 +5221,8 @@ rtl8192c_PHY_IQCalibrate(
 		pdmpriv->RegEBC = RegEBC = result[final_candidate][5];
 		RegEC4 = result[final_candidate][6];
 		RegECC = result[final_candidate][7];
-		//DBG_8192C("IQK: final_candidate is %x\n", final_candidate);
-		//DBG_8192C("IQK: RegE94=%x RegE9C=%x RegEA4=%x RegEAC=%x RegEB4=%x RegEBC=%x RegEC4=%x RegECC=%x\n ", RegE94, RegE9C, RegEA4, RegEAC, RegEB4, RegEBC, RegEC4, RegECC);
+		DBG_8192C("IQK: final_candidate is %x\n", final_candidate);
+		DBG_8192C("IQK: RegE94=%x RegE9C=%x RegEA4=%x RegEAC=%x RegEB4=%x RegEBC=%x RegEC4=%x RegECC=%x\n ", RegE94, RegE9C, RegEA4, RegEAC, RegEB4, RegEBC, RegEC4, RegECC);
 		bPathAOK = bPathBOK = _TRUE;
 	}
 	else

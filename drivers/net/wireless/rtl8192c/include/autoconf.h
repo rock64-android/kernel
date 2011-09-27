@@ -40,7 +40,7 @@
 
 #define CONFIG_EMBEDDED_FWIMG	1
 
-#define CONFIG_R871X_TEST	1
+//#define CONFIG_R871X_TEST	1
 
 #define CONFIG_80211N_HT	1
 
@@ -51,9 +51,10 @@
 //#define CONFIG_DRVEXT_MODULE	1
 
 #ifndef CONFIG_MP_INCLUDED
-//#define CONFIG_IPS	1 /* modified by gwl, we'd better comment out the IPS function if we use lower speed IO interface. */
+//#define CONFIG_IPS	1 
+/* modified by gwl, we'd better comment out the IPS function if we use lower speed IO interface. */
 #ifdef CONFIG_IPS
-	//#define CONFIG_IPS_LEVEL_2	1 //enable this to set default IPS mode to IPS_LEVEL_2 (added by gwl)
+	//#define CONFIG_IPS_LEVEL_2	1 //enable this to set default IPS mode to IPS_LEVEL_2
 #endif
 #define SUPPORT_HW_RFOFF_DETECTED	1
 
@@ -77,6 +78,12 @@
 //	Added by Albert 20110314
 //#define CONFIG_P2P	1
 
+//	Added by Albert 20110812
+//	The CONFIG_WFD is for supporting the Wi-Fi display
+#ifdef CONFIG_P2P
+//#define CONFIG_WFD	1
+#endif
+
 //	Added by Kurt 20110511
 //#define CONFIG_TDLS	1
 			
@@ -84,7 +91,7 @@
 	#ifndef CONFIG_NATIVEAP_MLME
 		#define CONFIG_HOSTAPD_MLME	1
 	#endif			
-	#define CONFIG_FIND_BEST_CHANNEL	1//added by gwl
+	#define CONFIG_FIND_BEST_CHANNEL	1
 #endif
 
 #define CONFIG_SKB_COPY	1//for amsdu
@@ -118,16 +125,24 @@
 #endif
 
 #define CONFIG_PREALLOC_RECV_SKB	1
-#define CONFIG_REDUCE_USB_TX_INT	1
+//#define CONFIG_REDUCE_USB_TX_INT	1	// Trade-off: Improve performance, but may cause TX URBs blocked by USB Host/Bus driver on few platforms.
 //#define CONFIG_EASY_REPLACEMENT	1
 
 /* 
  * CONFIG_USE_USB_BUFFER_ALLOC_XX uses Linux USB Buffer alloc API and is for Linux platform only now!
  */
-//#define CONFIG_USE_USB_BUFFER_ALLOC_TX 1	// For TX path
+#define CONFIG_USE_USB_BUFFER_ALLOC_TX 1	// Trade-off: For TX path, improve stability on some platforms, but may cause performance degrade on other platforms.
 //#define CONFIG_USE_USB_BUFFER_ALLOC_RX 1	// For RX path
 
-#define CONFIG_USB_VENDOR_REQ_PREALLOC 1
+/* 
+ * USB VENDOR REQ BUFFER ALLOCATION METHOD
+ * if not set we'll use function local variable (stack memory)
+ */
+//#define CONFIG_USB_VENDOR_REQ_BUFFER_DYNAMIC_ALLOCATE
+#define CONFIG_USB_VENDOR_REQ_BUFFER_PREALLOC
+
+#define CONFIG_USB_VENDOR_REQ_MUTEX
+#define CONFIG_VENDOR_REQ_RETRY
 
 //#define CONFIG_USB_SUPPORT_ASYNC_VDN_REQ 1
 
@@ -180,13 +195,12 @@
 
 #endif
 
-#ifndef CONFIG_WISTRON_PLATFORM
-//#define CONFIG_DYNAMIC_ALLOCIATE_VENDOR_CMD	1
-#define SILENT_RESET_FOR_SPECIFIC_PLATFOM	1
+#ifdef CONFIG_WISTRON_PLATFORM
+
 #endif
 
 #ifdef CONFIG_PLATFORM_TI_DM365
-#define CONFIG_SPECIFIC_URB_NUM
+#define CONFIG_USE_USB_BUFFER_ALLOC_RX 1
 #endif
 
 
@@ -196,9 +210,9 @@
 //#define CONFIG_DEBUG_RTL871X
 
 #define DBG	0
-#define CONFIG_DEBUG_RTL819X
+//#define CONFIG_DEBUG_RTL819X
 
-#define CONFIG_PROC_DEBUG	1
+//#define CONFIG_PROC_DEBUG	1
 
 //#define DBG_IO
 //#define DBG_DELAY_OS
@@ -213,4 +227,5 @@
 //#define DBG_RX_SEQ
 
 //#define DBG_SHOW_MCUFWDL_BEFORE_51_ENABLE
+//#define DBG_ROAMING_TEST
 
