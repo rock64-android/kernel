@@ -148,14 +148,34 @@ static int i2c_end_cmd(struct gt818_ts_data *ts)
 	return ret;
 }
 
+static int  goodix_read_version(struct gt818_ts_data *ts)
+{
+	int ret;
+	u8 version_data[5] = {0};	//store touchscreen version infomation
+	memset(version_data, 0, 5);
+	version_data[0] = 0x07;
+	version_data[1] = 0x17;
+	msleep(2);
+	ret = i2c_read_bytes(ts->client, version_data, 4);
+	if (ret < 0)
+		return ret;
+	dev_info(&ts->client->dev," Guitar Version: %d.%d\n",version_data[3],version_data[2]);
+
+	ret = version_data[3];
+	ret = (ret << 8) | version_data[2];
+	return (ret & 0xffff);
+
+}
 
 
 static int goodix_init_panel(struct gt818_ts_data *ts)
 {
 	int ret = -1;
 	int i = 0;
-#if 1
-	u8 config_info[] = {
+	u8 *config_info;
+	int version = 0;
+
+	u8 config_info_V91[] = {
 	0x06,0xA2,
 	0x00,0x02,0x04,0x06,0x08,0x0A,0x0C,0x0E,
 	0x10,0x12,0x00,0x00,0x10,0x00,0x20,0x00,
@@ -163,7 +183,7 @@ static int goodix_init_panel(struct gt818_ts_data *ts)
 	0xE0,0x00,0xD0,0x00,0xC0,0x00,0xB0,0x00,
 	0xA0,0x00,0x90,0x00,0x80,0x00,0x70,0x00,
 	0xF0,0x00,0x13,0x13,0x90,0x90,0x90,0x27,
-	0x27,0x27,0x0F,0x0E,0x0A,0x40,0x30,0x01,
+	0x27,0x27,0x0F,0x0E,0x0A,0x40,0x30,  0x01, //interrupt
 	0x03,0x00,MAX_FINGER_NUM,0x00,0x14,0xFA,0x1B,0x00,
 	0x00,0x66,0x5A,0x6A,0x5E,0x00,0x00,0x05,
 	0x14,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -172,18 +192,46 @@ static int goodix_init_panel(struct gt818_ts_data *ts)
 	0x30,0x3C,0x28,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x01
 	};
-#endif
-	u8 read_config_info[sizeof(config_info)] = {0};
+
+	u8 config_info_V125[] = {
+	0x06,0xA2,
+	0x00,0x02,0x04,0x06,0x08,0x0A,0x0C,0x0E,
+	0x10,0x12,0x00,0x00,0x10,0x00,0x20,0x00,
+	0x30,0x00,0x40,0x00,0x50,0x00,0x60,0x00,
+	0xE0,0x00,0xD0,0x00,0xC0,0x00,0xB0,0x00,
+	0xA0,0x00,0x90,0x00,0x80,0x00,0x70,0x00,
+	0xF0,0x00,0x1B,0x03,0x90,0x90,0x90,0x27,
+	0x27,0x27,0x0F,0x0E,0x0A,0x40,0x30,  0x01,
+	0x03,0x00,MAX_FINGER_NUM,0x00,0x14,0xFA,0x1B,0x00,
+	0x00,0x66,0x5A,0x6A,0x5E,0x00,0x00,0x02,
+	0x14,0x00,0x05,0x00,0x00,0x00,0x00,0x00,
+	0x14,0x10,0xEF,0x03,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x20,0x45,0x68,0x90,0x0D,0x40,
+	0x30,0x3C,0x28,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x01
+	};
+
+	//according to goodix, different version need different config value
+	version = goodix_read_version(ts);
+
+	if(version < 0x7a){
+		config_info = config_info_V91;
+	}
+	else{
+		config_info = config_info_V125;
+	}
+
+	u8 read_config_info[sizeof(config_info_V125)] = {0};
 	read_config_info[0] = 0x06;
 	read_config_info[1] = 0xa2;
 
-	ret = i2c_write_bytes(ts->client, config_info, (sizeof(config_info)/sizeof(config_info[0])));
+	ret = i2c_write_bytes(ts->client, config_info, ARRAY_SIZE(config_info_V125));
 	if (ret < 0) {
 		printk("config gt818 fail\n");
 		return ret;
 	}
 
-	ret = i2c_read_bytes(ts->client, read_config_info, (sizeof(config_info)/sizeof(config_info[0])));
+	ret = i2c_read_bytes(ts->client, read_config_info, ARRAY_SIZE(config_info_V125));
 	if (ret < 0){
 		printk("read gt818 config fail\n");
 		return ret;
@@ -200,23 +248,6 @@ static int goodix_init_panel(struct gt818_ts_data *ts)
 	return 0;
 
 }
-
-static int  goodix_read_version(struct gt818_ts_data *ts)
-{
-	int ret;
-	u8 version_data[5] = {0};	//store touchscreen version infomation
-	memset(version_data, 0, 5);
-	version_data[0] = 0x07;
-	version_data[1] = 0x17;
-	msleep(2);
-	ret = i2c_read_bytes(ts->client, version_data, 4);
-	if (ret < 0) 
-		return ret;
-	dev_info(&ts->client->dev," Guitar Version: %d.%d\n",version_data[3],version_data[2]);
-	return 0;
-	
-}
-
 
 
 static void goodix_ts_work_func(struct work_struct *work)
@@ -248,6 +279,7 @@ static void goodix_ts_work_func(struct work_struct *work)
 	i2c_end_cmd(ts);
 
 	//judge whether the data is ready
+
 	if((touch_status[2] & 0x30) != 0x20)
 	{
 		printk("%s:DATA_NO_READY\n", __func__);
@@ -264,6 +296,7 @@ static void goodix_ts_work_func(struct work_struct *work)
 	key_value = touch_status + 15;
 	key = key_value[2] & 0x0f;
 
+	//printk("0x712:0x%02x  key:%d\n", touch_status[2], key);
 	if(finger > 0)
 	{
 		point_data = key_value + 3;
@@ -405,7 +438,7 @@ static enum hrtimer_restart goodix_ts_timer_func(struct hrtimer *timer)
 {
 	struct gt818_ts_data *ts = container_of(timer, struct gt818_ts_data, timer);
 	queue_work(goodix_wq, &ts->work);
-	hrtimer_start(&ts->timer, ktime_set(0, (POLL_TIME+6)*1000000), HRTIMER_MODE_REL);
+	hrtimer_start(&ts->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
 	return HRTIMER_NORESTART;
 }
 
@@ -425,14 +458,16 @@ static int goodix_ts_power(struct gt818_ts_data * ts, int on)
 	unsigned char i2c_control_buf[3] = {0x06,0x92,0x01};		//suspend cmd
 	if(ts != NULL && !ts->use_irq)
 		return -2;
+	//return 0;
 	switch(on)
 	{
 		case 0:
+
 			i2c_pre_cmd(ts);
 			// set the io port high level to avoid level change which might stop gt818 from sleeping
-			gpio_direction_output(pdata->gpio_reset, 1);
+			//gpio_direction_output(pdata->gpio_reset, 1);
 			gpio_direction_output(pdata->gpio_pendown, 1);
-			msleep(5);
+			//msleep(5);
 			ret = i2c_write_bytes(ts->client, i2c_control_buf, 3);
 			if(ret < 0)
 			{
@@ -440,36 +475,26 @@ static int goodix_ts_power(struct gt818_ts_data * ts, int on)
 			}
 			else
 			{
-				//printk(KERN_INFO"**gt818 suspend**\n");
+				printk(KERN_INFO"**gt818 suspend**\n");
 				ret = 0;
 			}
-//			i2c_end_cmd(ts);
+			//i2c_end_cmd(ts);
 			return ret;
 			
 		case 1:
-
-			gpio_pull_updown(pdata->gpio_pendown, 1);
+#if 1
+			//gpio_pull_updown(pdata->gpio_pendown, 1);
 			gpio_direction_output(pdata->gpio_pendown, 0);
 			msleep(1);
 			gpio_direction_output(pdata->gpio_pendown, 1);
 			msleep(1);
 			gpio_direction_input(pdata->gpio_pendown);
 			gpio_pull_updown(pdata->gpio_pendown, 0);
-
-/*
-			msleep(2);
-			gpio_pull_updown(pdata->gpio_reset, 1);
-			gpio_direction_output(pdata->gpio_reset, 0);
-			msleep(2);
-			gpio_direction_input(pdata->gpio_reset);
-			gpio_pull_updown(pdata->gpio_reset, 0);
-			msleep(30);
-*/
+#endif
 			msleep(1);
 			ret = i2c_pre_cmd(ts);
-			//printk(KERN_INFO"**gt818 reusme**\n");
+			printk(KERN_INFO"**gt818 reusme**\n");
 			ret = i2c_end_cmd(ts);
-
 			return ret;
 				
 		default:
@@ -516,8 +541,10 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_gpio_request_failed;
 	}
 	rk29_mux_api_set(pdata->pendown_iomux_name, pdata->pendown_iomux_mode);
+
 	gpio_direction_input(pdata->gpio_pendown);
 	gpio_pull_updown(pdata->gpio_pendown, 0);
+	//gpio_direction_output(pdata->gpio_pendown, 0);
 
 	ret = gpio_request(pdata->gpio_reset, "gt818_resetPin");
 	if(ret){
@@ -525,15 +552,18 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_gpio_request_failed;
 	}
 	rk29_mux_api_set(pdata->resetpin_iomux_name, pdata->resetpin_iomux_mode);
+	gpio_pull_updown(pdata->gpio_reset, 0);
+	//gpio_direction_output(pdata->gpio_reset, 1);
 
 #if 1
 	for(retry = 0; retry < 4; retry++)
 	{
-		gpio_pull_updown(pdata->gpio_reset, 1);
+
+		//gpio_pull_updown(pdata->gpio_reset, 1);
 		gpio_direction_output(pdata->gpio_reset, 0);
 		msleep(1);     //delay at least 1ms
 		gpio_direction_input(pdata->gpio_reset);
-		gpio_pull_updown(pdata->gpio_reset, 0);
+		//gpio_pull_updown(pdata->gpio_reset, 0);
 		msleep(25);   //delay at least 20ms
 		ret = i2c_pre_cmd(ts);
 		if (ret > 0)
@@ -551,7 +581,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	for(retry = 0; retry < 3; retry++)
 	{
 		ret = goodix_init_panel(ts);
-
 		dev_info(&client->dev,"the config ret is :%d\n", ret);
 		msleep(20);
 		if(ret < 0)	//Initiall failed
@@ -565,8 +594,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_init_godix_ts;
 	}
 
-	goodix_read_version(ts);
-
+	//goodix_read_version(ts);
 
 	INIT_WORK(&ts->work, goodix_ts_work_func);		//init work_struct
 	ts->input_dev = input_allocate_device();
@@ -619,7 +647,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_input_register_device_failed;
 	}
 	ts->bad_data = 0;
-//	finger_list.length = 0;
 
 	client->irq = gpio_to_irq(pdata->gpio_pendown);		//If not defined in client
 	if (client->irq)
@@ -661,7 +688,7 @@ err_gpio_request_failed:
 #endif
 	dev_info(&client->dev,"Start %s in %s mode\n",
 		ts->input_dev->name, ts->use_irq ? "interrupt" : "polling");
-
+	//ts->use_irq = 0;
 	if (ts->use_irq)
 	{
 		enable_irq(client->irq);
@@ -741,7 +768,7 @@ static int goodix_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 		hrtimer_cancel(&ts->timer);
 	//ret = cancel_work_sync(&ts->work);
 	//if(ret && ts->use_irq)	
-		//enable_irq(client->irq);
+	//enable_irq(client->irq);
 	if (ts->power) {
 		ret = ts->power(ts, 0);
 		if (ret < 0)
@@ -836,4 +863,5 @@ module_exit(goodix_ts_exit);
 MODULE_DESCRIPTION("Goodix Touchscreen Driver");
 MODULE_AUTHOR("hhb@rock-chips.com")
 MODULE_LICENSE("GPL");
+
 
