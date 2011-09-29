@@ -249,18 +249,32 @@ static int fts_i2c_rxdata(u8 *rxdata, int length)
 	msg.flags = 0;
 	msg.len = 1;
 	msg.buf = rxdata;
+	msg.scl_rate = FT5X0X_I2C_SPEED;
+	
 	ret = i2c_transfer(this_client->adapter, &msg, 1);
 
-	if (ret < 0)
+	if(ret == 0){
 		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
-
+		return -EBUSY;
+	}else if(ret < 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return ret;
+	}
+	
 	msg.addr = this_client->addr;
 	msg.flags = I2C_M_RD;
 	msg.len = length;
 	msg.buf = rxdata;
+	msg.scl_rate = FT5X0X_I2C_SPEED;
 	ret = i2c_transfer(this_client->adapter, &msg, 1);
-	if (ret < 0)
-		pr_err("msg %s line:%d i2c write error: %d\n", __func__,__LINE__, ret);
+	
+	if(ret == 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return -EBUSY;
+	}else if(ret < 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return ret;
+	}
 
 	return ret;
 }
@@ -289,9 +303,17 @@ static int fts_i2c_txdata(u8 *txdata, int length)
 	msg.flags = 0;
 	msg.len = length;
 	msg.buf = txdata;
+	msg.scl_rate = FT5X0X_I2C_SPEED;
+	
 	ret = i2c_transfer(this_client->adapter, &msg, 1);
-	if (ret < 0)
-		pr_err("%s i2c write error: %d\n", __func__, ret);
+	
+	if(ret == 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return -EBUSY;
+	}else if(ret < 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return ret;
+	}
 
 	return ret;
 }

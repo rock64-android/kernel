@@ -4,6 +4,8 @@
 //#define CONFIG_SUPPORT_FTS_CTP_UPG
 #define CONFIG_FTS_CUSTOME_ENV
 
+#define FT5X0X_I2C_SPEED 100*1000
+
 #define CFG_DBG_DUMMY_INFO_SUPPORT   1     //output touch point information
 #define CFG_DBG_FUCTION_INFO_SUPPORT 0     //output fouction name
 #define CFG_DBG_INPUT_EVENT                   0     //debug input event
