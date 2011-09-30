@@ -43,6 +43,9 @@ static struct wake_lock modem_wakelock;
 struct rk29_mu509_data *gpdata = NULL;
 static int  bp_wakeup_ap_irq = 0;
 
+static struct wake_lock bp_wakelock;
+static bool bpstatus_irq_enable = false;
+
 
 static void ap_wakeup_bp(struct platform_device *pdev, int wake)
 {
@@ -52,21 +55,18 @@ static void ap_wakeup_bp(struct platform_device *pdev, int wake)
 	gpio_set_value(pdata->ap_wakeup_bp, wake);  
 
 }
-extern void rk28_send_wakeup_key(void);
 
 static void do_wakeup(struct work_struct *work)
 {
     MODEMDBG("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
-    rk28_send_wakeup_key();
     enable_irq(bp_wakeup_ap_irq);
 }
 
 static DECLARE_DELAYED_WORK(wakeup_work, do_wakeup);
 static irqreturn_t detect_irq_handler(int irq, void *dev_id)
 {
-   	disable_irq_nosync( irq);
         printk("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
-        schedule_delayed_work(&wakeup_work, HZ / 10);
+      wake_lock_timeout(&bp_wakelock, 10 * HZ);
    
     return IRQ_HANDLED;
 }
@@ -76,22 +76,10 @@ int modem_poweron_off(int on_off)
   if(on_off)
   {
 	MODEMDBG("%s::%d--bruins--\n",__func__,__LINE__);
-/*	
-	gpio_set_value(pdata->bp_power, GPIO_LOW);
-	msleep(1000);
-	gpio_set_value(pdata->bp_power, GPIO_HIGH);
-	msleep(700);
-	gpio_set_value(pdata->ap_wakeup_bp, GPIO_LOW);
-*/
   }
   else
   {
 	MODEMDBG("%s::%d--bruins--\n",__func__,__LINE__);
-/*	
-	gpio_set_value(pdata->bp_power, GPIO_LOW);
-	mdelay(2500);
-	gpio_set_value(pdata->bp_power, GPIO_HIGH);
-*/
   }
   return 0;
 }
@@ -199,6 +187,8 @@ static int mu509_probe(struct platform_device *pdev)
 
 	enable_irq_wake(bp_wakeup_ap_irq); 
 
+	wake_lock_init(&bp_wakelock, WAKE_LOCK_SUSPEND, "bp_resume");
+
 	result = misc_register(&mu509_misc);
 	if(result){
 		MODEMDBG("misc_register err\n");
@@ -217,16 +207,34 @@ int mu509_suspend(struct platform_device *pdev)
 {
 	
 	struct rk29_mu509_data *pdata = pdev->dev.platform_data;
+	int irq, error;
 	MODEMDBG("%s::%d--\n",__func__,__LINE__);
 	gpio_set_value(pdata->ap_wakeup_bp, GPIO_LOW);
+	irq = gpio_to_irq(pdata->bp_wakeup_ap);
+	if (irq < 0) {
+		printk("can't get pdata->bp_statue irq \n");
+	}
+	else
+	{
+		printk("enable pdata->bp_statue irq_wake!! \n");
+		bpstatus_irq_enable = true;
+		enable_irq_wake(irq);
+	}
 	return 0;
 }
 
 int mu509_resume(struct platform_device *pdev)
 {
 	struct rk29_mu509_data *pdata = pdev->dev.platform_data;
+	int irq, error;
 	MODEMDBG("%s::%d--bruins--\n",__func__,__LINE__);
 	gpio_set_value(pdata->ap_wakeup_bp, GPIO_HIGH);	
+		irq = gpio_to_irq(pdata->bp_wakeup_ap);
+	if (irq ) {
+		printk("enable pdata->bp_statue irq_wake!! \n");
+		disable_irq_wake(irq);
+		bpstatus_irq_enable = false;
+	}
 	return 0;
 }
 
