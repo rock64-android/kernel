@@ -52,7 +52,7 @@ extern void rk28_send_wakeup_key(void);
 static void do_wakeup(struct work_struct *work)
 {
 //    MODEMDBG("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
-    rk28_send_wakeup_key();
+    //rk28_send_wakeup_key();
 }
 
 static DECLARE_DELAYED_WORK(wakeup_work, do_wakeup);
