@@ -77,6 +77,7 @@ int modem_poweron_off(int on_off)
 		msleep(1000);
 		gpio_set_value(pdata->bp_power, GPIO_HIGH);
 		msleep(700);
+		gpio_set_value(pdata->bp_power, GPIO_LOW);
 		gpio_set_value(pdata->ap_wakeup_bp, GPIO_LOW);
 		gpio_set_value(airplane_mode, GPIO_HIGH);
   }
@@ -86,6 +87,8 @@ int modem_poweron_off(int on_off)
 		gpio_set_value(pdata->bp_power, GPIO_LOW);
 		mdelay(2500);
 		gpio_set_value(pdata->bp_power, GPIO_HIGH);
+		mdelay(2500);
+		gpio_set_value(pdata->bp_power, GPIO_LOW);
   }
   return 0;
 }
@@ -119,6 +122,7 @@ static int mu509_ioctl(struct inode *inode,struct file *file, unsigned int cmd, 
 			msleep(1000);
 			gpio_set_value(pdata->bp_power, GPIO_HIGH);
 			msleep(700);
+			gpio_set_value(pdata->bp_power, GPIO_LOW);
 			gpio_set_value(pdata->ap_wakeup_bp, GPIO_LOW);
 			gpio_set_value(airplane_mode, GPIO_HIGH);
 			break;
@@ -153,6 +157,9 @@ static int mu509_probe(struct platform_device *pdev)
 	struct modem_dev *mu509_data = NULL;
 	int result, irq = 0;	
 	//MODEMDBG("-------------%s\n",__FUNCTION__);
+	gpio_set_value(pdata->bp_reset, GPIO_HIGH);
+	mdelay(100);
+	gpio_set_value(pdata->bp_reset, GPIO_LOW);
 	modem_poweron_off(1);
 	mu509_data = kzalloc(sizeof(struct modem_dev), GFP_KERNEL);
 	if(mu509_data == NULL)
