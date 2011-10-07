@@ -1478,7 +1478,7 @@ static int fb0_set_par(struct fb_info *info)
         {
             par->format = 1;
             #ifdef CONFIG_FB_SCALING_OSD
-            dstoffset = ((ypos_virtual*screen->y_res/var->yres) *screen->x_res + (xpos_virtual*screen->x_res)/var->xres )*2;
+            dstoffset = (((ypos_virtual-2*var->yres)*screen->y_res/var->yres) *screen->x_res + (xpos_virtual*screen->x_res)/var->xres )*4;
             ipp_req.src0.fmt = IPP_RGB_565;
             ipp_req.dst0.fmt = IPP_RGB_565;
             #endif
@@ -1609,7 +1609,7 @@ static int fb0_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
         {
             par->format = 1;
             #ifdef CONFIG_FB_SCALING_OSD
-            dstoffset = ((ypos_virtual*screen->y_res/var->yres) *screen->x_res + (xpos_virtual*screen->x_res)/var->xres )*2;
+           	dstoffset = (((ypos_virtual-2*var->yres)*screen->y_res/var->yres) *screen->x_res + (xpos_virtual*screen->x_res)/var->xres )*4;
             ipp_req.src0.fmt = IPP_RGB_565;
             ipp_req.dst0.fmt = IPP_RGB_565;
             #endif
