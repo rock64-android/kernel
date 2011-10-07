@@ -1532,8 +1532,8 @@ void mainMIC_to_PCMBB_to_headset(void)
 {	
 	DBG("%s::%d\n",__FUNCTION__,__LINE__);
 
-	if(wm8994_current_mode==wm8994_mainMIC_to_baseband_to_earpiece)return;
-	wm8994_current_mode=wm8994_mainMIC_to_baseband_to_earpiece;
+	if(wm8994_current_mode==wm8994_mainMIC_to_baseband_to_headset)return;
+	wm8994_current_mode=wm8994_mainMIC_to_baseband_to_headset;
 	wm8994_reset();
 	msleep(50);
 
@@ -1653,7 +1653,8 @@ void mainMIC_to_PCMBB_to_headset(void)
 	wm8994_write(0x422, 0x0000);   ////AIF2 un-mute as master
 
 	//wm8994_write(0x312, 0x0000);  //AIF2 SET AS MASTER
-	wm8994_set_level_volume();
+	//wm8994_set_level_volume();
+	wm8994_set_channel_vol();
 	//wm8994_set_volume(wm8994_current_mode,call_vol,call_maxvol);
 #endif
 
@@ -1813,6 +1814,7 @@ void mainMIC_to_PCMBB_to_earpiece(void) //pcmbaseband
 	wm8994_write(0x621, 0x0000);  ///0x0001);
 	wm8994_write(0x317, 0x0003);
 	wm8994_write(0x312, 0x0000);  //AIF2 SET AS MASTER
+	wm8994_set_channel_vol();
 	
 	
 }
@@ -1942,7 +1944,7 @@ void mainMIC_to_PCMBB_to_speakers(void) //pcmbaseband
 	wm8994_write(0x36,  0x000C);
 
 	wm8994_write(0x422, 0x0000);   ////AIF2 un-mute as master
-	wm8994_set_level_volume();
+	wm8994_set_channel_vol();
 	//wm8994_set_volume(wm8994_current_mode,call_vol,call_maxvol);
 #endif
 	
