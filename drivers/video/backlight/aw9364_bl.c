@@ -152,7 +152,7 @@ static void aw9364_bl_resume(struct early_suspend *h)
 	aw9364_data = container_of(h, struct aw9364_backlight_data, early_suspend);
 	aw9364_data->suspend_flag = 0;
 
-	schedule_delayed_work(&aw9364_data->work, msecs_to_jiffies(0));
+	schedule_delayed_work(&aw9364_data->work, msecs_to_jiffies(100));
 	
 }
 
