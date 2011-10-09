@@ -299,6 +299,11 @@ config FM580X
 config MU509
 	bool "MU509 modem control driver"
 	default n
+	
+config MI900
+	bool "MI900 modem control driver"
+	default n
+
 config MW100
 	bool "MW100 modem control driver"
 	default n
