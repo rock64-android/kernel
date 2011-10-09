@@ -44,6 +44,7 @@
 #define DRIVER_DESC "HID core driver"
 #define DRIVER_LICENSE "GPL"
 
+static unsigned int is_left_down = 0;
 int hid_debug = 0;
 module_param_named(debug, hid_debug, int, 0600);
 MODULE_PARM_DESC(debug, "toggle HID debugging messages");
@@ -1120,6 +1121,14 @@ int hid_input_report(struct hid_device *hid, int type, u8 *data, int size, int i
 	kfree(buf);
 
 nomem:
+       if(is_left_down == 0 && data[0] == 1){
+               is_left_down = 1;
+               data[1] = 0;
+               data[2] = 0;
+       }
+       if(data[0] == 0)
+               is_left_down = 0;
+
 	if (hdrv && hdrv->raw_event && hid_match_report(hid, report)) {
 		ret = hdrv->raw_event(hid, report, data, size);
 		if (ret != 0)
