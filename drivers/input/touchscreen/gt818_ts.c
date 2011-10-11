@@ -475,14 +475,15 @@ static int goodix_ts_power(struct gt818_ts_data * ts, int on)
 			}
 			else
 			{
-				printk(KERN_INFO"**gt818 suspend**\n");
+				//printk(KERN_INFO"**gt818 suspend**\n");
 				ret = 0;
 			}
 			//i2c_end_cmd(ts);
 			return ret;
 			
 		case 1:
-#if 1
+
+			//According to goodix only interrupt pin is needed to be oprated when resume,
 			//gpio_pull_updown(pdata->gpio_pendown, 1);
 			gpio_direction_output(pdata->gpio_pendown, 0);
 			msleep(1);
@@ -490,10 +491,13 @@ static int goodix_ts_power(struct gt818_ts_data * ts, int on)
 			msleep(1);
 			gpio_direction_input(pdata->gpio_pendown);
 			gpio_pull_updown(pdata->gpio_pendown, 0);
-#endif
+
+			//when suspend pull_updown would enable,so we need to redisable the pull_updown
+			gpio_pull_updown(pdata->gpio_reset, 0);
+
 			msleep(1);
 			ret = i2c_pre_cmd(ts);
-			printk(KERN_INFO"**gt818 reusme**\n");
+			//printk(KERN_INFO"**gt818 reusme**\n");
 			ret = i2c_end_cmd(ts);
 			return ret;
 				
@@ -503,6 +507,7 @@ static int goodix_ts_power(struct gt818_ts_data * ts, int on)
 	}
 
 }
+
 
 
 static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -563,12 +568,11 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		gpio_direction_output(pdata->gpio_reset, 0);
 		msleep(1);     //delay at least 1ms
 		gpio_direction_input(pdata->gpio_reset);
-		//gpio_pull_updown(pdata->gpio_reset, 0);
-		msleep(25);   //delay at least 20ms
+		gpio_pull_updown(pdata->gpio_reset, 0);
+		msleep(50);   //delay at least 20ms
 		ret = i2c_pre_cmd(ts);
 		if (ret > 0)
 			break;
-		msleep(50);
 	}
 
 	if(ret <= 0)
