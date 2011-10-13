@@ -841,9 +841,10 @@ static void ft5x0x_ts_early_suspend(struct early_suspend *h)
 
     printk("enter ft5x0x_ts_early_suspend\n");
 	
-	disable_irq_nosync(this_client->irq);
-
 	cancel_work_sync(&data->pen_event_work);
+	
+	disable_irq(this_client->irq);
+
 	
 	ft5x0x_ts_set_standby(this_client,0);
 	
@@ -855,12 +856,7 @@ static void ft5x0x_ts_late_resume(struct early_suspend *h)
 
 	ft5x0x_ts_set_standby(this_client,1);
 
-    if(!work_pending(&data->pen_event_work)){
-		PREPARE_WORK(&data->pen_event_work, fts_work_func);
-    	queue_work(data->ts_workqueue, &data->pen_event_work);
-    }
-	else
-		enable_irq(this_client->irq);
+	enable_irq(this_client->irq);
 
     printk("ft5x0x_ts_late_resume finish\n");
 
