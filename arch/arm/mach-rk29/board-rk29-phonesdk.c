@@ -3070,7 +3070,7 @@ static struct cpufreq_frequency_table freq_table[] =
 	{ .index = 1100000, .frequency =  408000 },
 	{ .index = 1150000, .frequency =  600000 },
 	{ .index = 1200000, .frequency =  816000 },
-	{ .index = 1300000, .frequency = 1008000 },
+//	{ .index = 1300000, .frequency = 1008000 },
 	{ .frequency = CPUFREQ_TABLE_END },
 };
 
