@@ -46,7 +46,6 @@ static void uart_ctl(void);
 static void ap_wakeup_bp(struct platform_device *pdev, int wake)
 {
 	struct rk29_mi900_data *pdata = pdev->dev.platform_data;
-
 	gpio_set_value(pdata->ap_wakeup_bp, wake);  
 
 }
@@ -54,7 +53,7 @@ extern void rk28_send_wakeup_key(void);
 
 static void do_wakeup(struct work_struct *work)
 {
-//    MODEMDBG("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
+    //MODEMDBG("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
     rk28_send_wakeup_key();
 }
 
@@ -64,7 +63,7 @@ static irqreturn_t detect_irq_handler(int irq, void *dev_id)
     if(do_wakeup_irq)
     {
         do_wakeup_irq = 0;
-  //      MODEMDBG("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
+        //MODEMDBG("%s[%d]: %s\n", __FILE__, __LINE__, __FUNCTION__);
         wake_lock_timeout(&modem_wakelock, 10 * HZ);
         schedule_delayed_work(&wakeup_work, HZ / 10);
     }
@@ -205,29 +204,31 @@ static int mi900_probe(struct platform_device *pdev)
 		goto err2;
 	}
 	platform_set_drvdata(pdev, mi900_data);		
+	
 	result = gpio_request(pdata->ap_wakeup_bp, "mi900");
 	if (result) {
 		printk("failed to request AP_BP_WAKEUP gpio\n");
 		goto err1;
 	}	
-	irq	= gpio_to_irq(pdata->bp_wakeup_ap);
-	enable_irq_wake(irq);
+
+	wake_lock_init(&modem_wakelock, WAKE_LOCK_SUSPEND, "bp_wakeup_ap");
+
+	result = gpio_request(pdata->bp_wakeup_ap, "bp_wakeup_ap");
+	if (result < 0) {
+		printk("%s: gpio_request(%d) failed\n", __func__, pdata->bp_wakeup_ap);
+	}
+	gpio_direction_input(pdata->bp_wakeup_ap);
+    gpio_pull_updown(pdata->bp_wakeup_ap, 1);	
+    irq	= gpio_to_irq(pdata->bp_wakeup_ap);
 	if(irq < 0)
 	{
 		gpio_free(pdata->bp_wakeup_ap);
 		printk("failed to request bp_wakeup_ap\n");
 	}
-	result = gpio_request(pdata->bp_wakeup_ap, "bp_wakeup_ap");
-	if (result < 0) {
-		printk("%s: gpio_request(%d) failed\n", __func__, pdata->bp_wakeup_ap);
-	}
-	wake_lock_init(&modem_wakelock, WAKE_LOCK_SUSPEND, "bp_wakeup_ap");
-	gpio_direction_input(pdata->bp_wakeup_ap);
-    gpio_pull_updown(pdata->bp_wakeup_ap, 1);	
 	result = request_irq(irq, detect_irq_handler, IRQ_BB_WAKEUP_AP_TRIGGER, "bp_wakeup_ap", NULL);
 	if (result < 0) {
 		printk("%s: request_irq(%d) failed\n", __func__, irq);
-		gpio_free(pdata->bp_wakeup_ap);
+		gpio_free(irq);
 		goto err0;
 	}
 	enable_irq_wake(gpio_to_irq(pdata->bp_wakeup_ap)); 
