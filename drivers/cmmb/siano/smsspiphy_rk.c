@@ -245,8 +245,8 @@ void smsspibus_xfer(void *context, unsigned char *txbuf,
 	if(txbuf)
 	{
 	 //  sms_debug("tx_buf:%x,%x,%x,%x,%x,%x", txbuf[0], txbuf[1], txbuf[2], txbuf[3], txbuf[4],txbuf[5]);
-	    sms_debug("rxbuf 4, 5,6,7,8, 9,10,11=%x,%x,%x,%x",rxbuf[4],rxbuf[5],rxbuf[6],rxbuf[7]);
-       sms_debug(",%x,%x,%x,%x\n",rxbuf[8],rxbuf[9],rxbuf[10],rxbuf[11]);
+	    //sms_debug("rxbuf 4, 5,6,7,8, 9,10,11=%x,%x,%x,%x",rxbuf[4],rxbuf[5],rxbuf[6],rxbuf[7]);
+      // sms_debug(",%x,%x,%x,%x\n",rxbuf[8],rxbuf[9],rxbuf[10],rxbuf[11]);
 	   ret = spi_write(spiphy_dev->Smsdevice, txbuf, len);
 	} else {
 		if ((rxbuf)&&(len != 16))

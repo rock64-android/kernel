@@ -1,14 +1,13 @@
 #ifndef __SC8800_H__
 #define __SC8800_H__
-
-typedef struct _spi_packet_head {
-	u16 tag; //HEADER_TAG(0x7e7f) 
-	u16 type; //HEADER_TYPE(0xaa55) 
-	u32 length; //the length of data after head  (8192-128 bytes) 
-	u32 frame_num; //no used , always 0
-	u32 reserved2; //reserved 
-} SPI_PACKET_HEAD_T;
-
+struct bp_head{
+	u16 tag;           //0x7e7f
+	u16 type;        //0xaa55
+	u32 length;     //the length of data after head  (8192-128 bytes) 
+	u32 fram_num;  //no used , always 0
+	u32 reserved;   ////reserved 
+	char data[48];
+};
 
 /*define flatform data struct*/
 struct plat_sc8800 {

@@ -16,7 +16,10 @@ config INPUT_LPSENSOR_ISL29028
 	tristate "isl29028 l/p sensor input support"
 
 config INPUT_LPSENSOR_CM3602
-	tristate "l/p sensor input support"
+	tristate "cm3602 l/p sensor input support"
+
+config INPUT_LPSENSOR_AL3006
+	tristate "al3006 l/p sensor input support"
 
 config INPUT_PCSPKR
 	tristate "PC Speaker support"

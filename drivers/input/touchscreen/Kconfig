@@ -746,6 +746,12 @@ config TOUCHSCREEN_GT801_IIC
 config TOUCHSCREEN_GT818_IIC
 	tristate "GT818_IIC based touchscreens"
 	depends on I2C2_RK29
+config TOUCHSCREEN_PIXCIR
+	tristate "PIXCIR_IIC based touchscreens"
+	depends on I2C2_RK29
+config TOUCHSCREEN_FT5X0X
+	tristate "FT5X0X_IIC based touchscreens"
+	depends on I2C2_RK29
 config D70_L3188A
 	tristate "D70-L3188A based touchscreens"
 	depends on I2C2_RK29

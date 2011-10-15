@@ -6,6 +6,8 @@
 
 obj-$(CONFIG_INPUT_LPSENSOR_CM3602)		+= capella_cm3602.o
 obj-$(CONFIG_INPUT_LPSENSOR_ISL29028)	+= isl29028.o
+obj-$(CONFIG_INPUT_LPSENSOR_AL3006)	+= al3006.o
+
 obj-$(CONFIG_INPUT_APANEL)		+= apanel.o
 obj-$(CONFIG_INPUT_ATI_REMOTE)		+= ati_remote.o
 obj-$(CONFIG_INPUT_ATI_REMOTE2)		+= ati_remote2.o

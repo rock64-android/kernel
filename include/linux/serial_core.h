@@ -182,6 +182,8 @@
 #define PORT_RK2818		90
 
 #define PORT_RK29		90
+
+#define PORT_SC8800        91
 #ifdef __KERNEL__
 
 #include <linux/compiler.h>
