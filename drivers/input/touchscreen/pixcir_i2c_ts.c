@@ -650,11 +650,11 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 
 	
 	//**********************************************
-   /*char buffer[2];
+   char buffer[2];
 	buffer[0] = 0x3A;
 	buffer[1] = 0x03;
 	tp_pixcir_write_reg(client,buffer,2);
-	ssleep(6);*/
+	ssleep(6);
 	//********************************************************//
 	client->irq = gpio_to_irq(client->irq);	
   	error = request_irq(client->irq, pixcir_ts_isr, IRQF_TRIGGER_FALLING, client->name, (void *)tsdata);
