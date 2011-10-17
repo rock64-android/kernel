@@ -70,6 +70,7 @@ struct sc8800_port {
 	int master_rdy;
 	wait_queue_head_t spi_read_wq;
 	wait_queue_head_t spi_write_wq;
+	wait_queue_head_t tx_wq;
 	char rx_buf[BP_MAX];
 	char tx_buf[BP_MAX];
 	char buf[BP_MAX];
@@ -85,6 +86,10 @@ struct sc8800_port {
 
 
 	struct task_struct *tx_thread;
+	int thread_wakeup_needed;
+	int need_wait;
+	struct completion tx_done;
+	spinlock_t		tx_lock;
 
 	struct sc8800_tx  tx_ctl;
 
@@ -158,7 +163,7 @@ static int rx_ctl_add(struct sc8800_port *s,char *buf,int len)
 		if((get-add) < total_len)
 		{
 			printk("rx_ctl_add_1******have no buff to get get = %d,add = %d,total_len = %d\n",get,add,total_len);
-			while(1);
+			//while(1);
 		}
 		else
 		{
@@ -171,7 +176,7 @@ static int rx_ctl_add(struct sc8800_port *s,char *buf,int len)
 		if((BP_CIR_BUF_MAX -add+get) < total_len)
 		{
 			printk("rx_ctl_add_2******have no buff to get get = %d,add = %d,total_len = %d\n",get,add,total_len);
-			while(1);
+			//while(1);
 		}
 		f_len =BP_CIR_BUF_MAX - add;
 		if(f_len >= total_len)
@@ -261,6 +266,31 @@ static void ap_rts(struct sc8800_port *s, int value)
 	gpio_set_value(s->master_rts, value);
 }
 
+static void wakeup_thread(struct sc8800_port *s)
+{
+	/* Tell the main thread that something has happened */
+	s->thread_wakeup_needed = 1;
+	if (s->tx_thread)
+		wake_up_process(s->tx_thread);
+}
+static int sleep_thread(struct sc8800_port *s)
+{
+	int	rc = 0;
+	/* Wait until a signal arrives or we are woken up */
+	for (;;) {
+		try_to_freeze();
+		set_current_state(TASK_INTERRUPTIBLE);
+		if (signal_pending(current)) {
+			rc = -EINTR;
+			break;
+		}
+		if (s->thread_wakeup_needed)
+			break;
+		schedule();
+	}
+	__set_current_state(TASK_RUNNING);
+	return rc;
+}
 static void ap_rdy(struct sc8800_port *s, int value)
 {
 	gpio_set_value(s->master_rdy, value);
@@ -278,6 +308,7 @@ static int spi_write_bp(struct sc8800_port *s, u8 *buf,u32 data_len)
 	tran.rx_buf = (void *)(s->buf);
 	tran.len = data_len;
 	tran.speed_hz = 0;
+	//tran.speed_hz = 32*1000*1000;
 	tran.bits_per_word = 16;
 	spi_message_init(&message);
 	spi_message_add_tail(&tran, &message);
@@ -365,6 +396,7 @@ static int spi_read_bp(struct sc8800_port *s, char *buf, int len)
 	tran.tx_buf = (void *)s->buf;
 	tran.len = len;
 	tran.speed_hz = 0;
+	//tran.speed_hz = 32*1000*1000;
 	tran.bits_per_word = 16;
 	spi_message_init(&message);
 	spi_message_add_tail(&tran, &message);
@@ -423,6 +455,7 @@ static void sc8800_tx_work(struct sc8800_port *s)
 	struct circ_buf *xmit = &s->port.state->xmit;
 	int len;
 
+	s->need_wait = 1;
 
 	if (!(uart_circ_empty(xmit))) {
 		len = uart_circ_chars_pending(xmit);
@@ -431,9 +464,12 @@ static void sc8800_tx_work(struct sc8800_port *s)
 		sc8800_data_packet(s, xmit->buf+xmit->tail, len);
 		xmit->tail = (xmit->tail + len) & (UART_XMIT_SIZE - 1);
 		s->port.icount.tx += len;
+		complete(&s->tx_done);
+		mdelay(5);
 	}
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(&s->port);	
+	//wakeup_thread(s);
 }	
 static void sc8800_rx_work(struct sc8800_port *s)
 {
@@ -468,13 +504,18 @@ static void sc8800_rx_work(struct sc8800_port *s)
 		printk("hzf_spi_read_len more than 48\n");
 		spi_read_bp(s, (char *)(buf+BP_PACKET_DATA_LEN), real_len-BP_PACKET_SIZE);	   //read total ????
 	}
-	/*{
+#if 0
+	{
 		int i;
-		printk("rx\n");
-		for(i=0;i<len;i++)
-			printk("0x%x,",buf[i]);
+		printk("rx data:");
+		for(i = 0; i < len; i++) {
+			if (i % 16 ==0)
+				printk("\n");
+			printk(" %#x",buf[i]);
+		}
 		printk("\n");
-	}*/
+	}
+#endif
 	//sc8800_dbg("rx:%s\n,",buf);
 	for (i=0; i<len; i++) {
 		ch = buf[i];		
@@ -492,9 +533,13 @@ static void sc8800_rx_work(struct sc8800_port *s)
 static irqreturn_t sc8800_irq(int irqno, void *dev_id)
 {
 	struct sc8800_port *s = dev_id;
+	int flags;
 
 	sc8800_dbg("%s\n", __func__);
 	s->rx_flag = 1;
+	//wakeup_thread(s);
+	complete(&s->tx_done);
+	//wake_up(&s->tx_wq);
 	return IRQ_HANDLED;
 }
 
@@ -648,6 +693,15 @@ static int tx_thread_function(void *data)
 	struct sc8800_port *s = (struct sc8800_port *) data;
 	int set =0,get = 0;
 	int len =0;
+	int flags;
+
+	//printk("%s: ==================\n", __func__);
+	/* Allow the thread to be frozen */
+	//set_freezable();
+	/* Arrange for userspace references to be interpreted as kernel
+	 * pointers.  That way we can pass a kernel pointer to a routine
+	 * that expects a __user pointer and it will work okay. */
+	//set_fs(get_ds());
 
 	while (1) {
 		set = s->set_index;
@@ -655,14 +709,17 @@ static int tx_thread_function(void *data)
 		
 rx:		if(s->rx_flag)
 		{
+			//printk("%s:   rx_flag = 1\n", __func__);
 			sc8800_rx_work(s);
 			s->rx_flag = 0;
 		}
 		else if(s->tx_ctl.rx_count)
 		{
+			//printk("%s:   rx_count >= 1\n", __func__);
 			msleep(1);
 			while(bp_rts(s) == 0)
 			{
+				//printk("%s:   bp_rts(s) == 0\n", __func__);
 				if(s->rx_flag)
 					goto rx;
 				msleep(1);
@@ -671,6 +728,7 @@ rx:		if(s->rx_flag)
 			
 			while(bp_rdy(s))
 			{
+				//printk("%s:   bp_rdy(s)\n", __func__);
 				if(s->rx_flag){
 					ap_rts(s,1);
 					goto rx;
@@ -684,6 +742,16 @@ rx:		if(s->rx_flag)
 				spi_write_bp(s,s->w_spi_buf,len);
 			}
 			ap_rts(s,1);
+
+			//complete(&s->tx_done);
+		}
+		else {
+			if (s->need_wait) {
+				//sleep_thread(s);
+				wait_for_completion(&s->tx_done);
+				//wait_event(s->tx_wq, s->tx_ctl.rx_count);
+				//printk("%s: =========wakeup\n", __func__);
+			}
 		}
 	}
 	return 0;
@@ -729,6 +797,7 @@ static int __devinit sc8800_probe(struct spi_device *spi)
 		return err;
 		
 	sc8800s[i]->spi = spi;
+	spin_lock_init(&sc8800s[i]->tx_lock);
 	spin_lock_init(&sc8800s[i]->work_lock);
 	spin_lock_init(&sc8800s[i]->conf_lock);
 	dev_set_drvdata(&spi->dev, sc8800s[i]);
@@ -752,6 +821,7 @@ static int __devinit sc8800_probe(struct spi_device *spi)
 	sc8800s[i]->port.type = PORT_SC8800;
 	init_waitqueue_head(&sc8800s[i]->spi_write_wq);
 	init_waitqueue_head(&sc8800s[i]->spi_read_wq);
+	init_waitqueue_head(&sc8800s[i]->tx_wq);
 	retval = uart_add_one_port(&sc8800_uart_driver, &sc8800s[i]->port);
 	if (retval < 0)
 	{
@@ -765,9 +835,9 @@ static int __devinit sc8800_probe(struct spi_device *spi)
 		printk("sc8800_get uart buf error\n");
 	}
 
-
+	init_completion(&sc8800s[i]->tx_done);
 	sc8800s[i]->tx_thread = kthread_create(tx_thread_function,
-						    sc8800s[i], "tx thread");
+						    sc8800s[i], "sc8800 tx thread");
 	
 	wake_up_process(sc8800s[i]->tx_thread);
 
