@@ -526,10 +526,10 @@ SOC_ENUM_SINGLE(VIRTUAL_REG_FOR_MISC_FUNC, 12, 9, rt5625_eq_sel),    /*EQ mode s
 };
 
 static const struct soc_enum rt5625_differential_enum[] = {
-SOC_ENUM_SINGLE(RT5625_OUTPUT_MIXER_CTRL, 4, 2, rt5625_AUXOUT_mode),         /*0*/
-SOC_ENUM_SINGLE(RT5625_PHONEIN_VOL, 13, 2, rt5625_Differential_Input_Control),/*1*/
-SOC_ENUM_SINGLE(RT5625_MIC_VOL, 15, 2, rt5625_Differential_Input_Control),        /*2*/
-SOC_ENUM_SINGLE(RT5625_MIC_VOL, 7, 2, rt5625_Differential_Input_Control),         /*3*/
+SOC_ENUM_SINGLE(RT5625_OUTPUT_MIXER_CTRL, 4, 1, rt5625_AUXOUT_mode),         /*0*/
+SOC_ENUM_SINGLE(RT5625_PHONEIN_VOL, 13, 1, rt5625_Differential_Input_Control),/*1*/
+SOC_ENUM_SINGLE(RT5625_MIC_VOL, 15, 1, rt5625_Differential_Input_Control),        /*2*/
+SOC_ENUM_SINGLE(RT5625_MIC_VOL, 7, 1, rt5625_Differential_Input_Control),         /*3*/
 };
 
 //*****************************************************************************
@@ -955,10 +955,12 @@ SOC_SINGLE("Phone Playback Volume", RT5625_PHONEIN_VOL, 8, 31, 1),
 SOC_SINGLE("Mic1 Playback Volume", RT5625_MIC_VOL, 8, 31, 1),
 SOC_SINGLE("Mic2 Playback Volume", RT5625_MIC_VOL, 0, 31, 1),
 SOC_DOUBLE("PCM Capture Volume", RT5625_ADC_REC_GAIN, 8, 0, 31, 1),
-SOC_DOUBLE("SPKOUT Playback Volume", RT5625_SPK_OUT_VOL, 8, 0, 31, 1),
-SOC_DOUBLE("SPKOUT Playback Switch", RT5625_SPK_OUT_VOL, 15, 7, 1, 1),
-SOC_DOUBLE("HPOUT Playback Volume", RT5625_HP_OUT_VOL, 8, 0, 31, 1),
-SOC_DOUBLE("HPOUT Playback Switch", RT5625_HP_OUT_VOL, 15, 7, 1, 1),
+SOC_DOUBLE("Speaker Playback Volume", RT5625_SPK_OUT_VOL, 8, 0, 31, 1),
+SOC_DOUBLE("Speaker Playback Switch", RT5625_SPK_OUT_VOL, 15, 7, 1, 1),
+SOC_DOUBLE("Headphone Playback Volume", RT5625_HP_OUT_VOL, 8, 0, 31, 1),
+SOC_DOUBLE("Headphone Playback Switch", RT5625_HP_OUT_VOL, 15, 7, 1, 1),
+SOC_DOUBLE("Earpiece Playback Volume", RT5625_HP_OUT_VOL, 8, 0, 31, 1),
+SOC_DOUBLE("Earpiece Playback Switch", RT5625_HP_OUT_VOL, 15, 7, 1, 1),
 SOC_DOUBLE("AUXOUT Playback Volume", RT5625_AUX_OUT_VOL, 8, 0, 31, 1),
 SOC_DOUBLE("AUXOUT Playback Switch", RT5625_AUX_OUT_VOL, 15, 7, 1, 1),
 SOC_DOUBLE("ADC Record Gain", RT5625_ADC_REC_GAIN, 8, 0, 31, 0),
@@ -1994,14 +1996,14 @@ struct snd_soc_dai rt5625_dai[] = {
 		.playback = {
 			.stream_name = "Voice Playback",
 			.channels_min = 1,
-			.channels_max = 1,
+			.channels_max = 2,
 			.rates = RT5626_VOICE_RATES,
 			.formats = RT5625_FORMATS,
 		},
 		.capture = {
 			.stream_name = "Voice Capture",
 			.channels_min = 1,
-			.channels_max = 1,
+			.channels_max = 2,
 			.rates = RT5626_VOICE_RATES,
 			.formats = RT5625_FORMATS,
 		},
