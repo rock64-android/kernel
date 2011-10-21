@@ -249,18 +249,32 @@ static int fts_i2c_rxdata(u8 *rxdata, int length)
 	msg.flags = 0;
 	msg.len = 1;
 	msg.buf = rxdata;
+	msg.scl_rate = FT5X0X_I2C_SPEED;
+	
 	ret = i2c_transfer(this_client->adapter, &msg, 1);
 
-	if (ret < 0)
+	if(ret == 0){
 		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
-
+		return -EBUSY;
+	}else if(ret < 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return ret;
+	}
+	
 	msg.addr = this_client->addr;
 	msg.flags = I2C_M_RD;
 	msg.len = length;
 	msg.buf = rxdata;
+	msg.scl_rate = FT5X0X_I2C_SPEED;
 	ret = i2c_transfer(this_client->adapter, &msg, 1);
-	if (ret < 0)
-		pr_err("msg %s line:%d i2c write error: %d\n", __func__,__LINE__, ret);
+	
+	if(ret == 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return -EBUSY;
+	}else if(ret < 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return ret;
+	}
 
 	return ret;
 }
@@ -289,9 +303,17 @@ static int fts_i2c_txdata(u8 *txdata, int length)
 	msg.flags = 0;
 	msg.len = length;
 	msg.buf = txdata;
+	msg.scl_rate = FT5X0X_I2C_SPEED;
+	
 	ret = i2c_transfer(this_client->adapter, &msg, 1);
-	if (ret < 0)
-		pr_err("%s i2c write error: %d\n", __func__, ret);
+	
+	if(ret == 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return -EBUSY;
+	}else if(ret < 0){
+		pr_err("msg %s line:%d i2c write error: %d\n", __func__, __LINE__,ret);
+		return ret;
+	}
 
 	return ret;
 }
@@ -841,9 +863,10 @@ static void ft5x0x_ts_early_suspend(struct early_suspend *h)
 
     printk("enter ft5x0x_ts_early_suspend\n");
 	
-	disable_irq_nosync(this_client->irq);
-
 	cancel_work_sync(&data->pen_event_work);
+	
+	disable_irq(this_client->irq);
+
 	
 	ft5x0x_ts_set_standby(this_client,0);
 	
@@ -855,12 +878,7 @@ static void ft5x0x_ts_late_resume(struct early_suspend *h)
 
 	ft5x0x_ts_set_standby(this_client,1);
 
-    if(!work_pending(&data->pen_event_work)){
-		PREPARE_WORK(&data->pen_event_work, fts_work_func);
-    	queue_work(data->ts_workqueue, &data->pen_event_work);
-    }
-	else
-		enable_irq(this_client->irq);
+	enable_irq(this_client->irq);
 
     printk("ft5x0x_ts_late_resume finish\n");
 
@@ -987,9 +1005,9 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 		_st_finger_infos[i].u2_pressure = -1;
 
 	input_set_abs_params(input_dev,
-			ABS_MT_POSITION_X, 0, SCREEN_MAX_X, 0, 0);
+			ABS_MT_POSITION_X, 0, SCREEN_MAX_X + SCREEN_BOUNDARY_ADJUST_VALUE, 0, 0);
 	input_set_abs_params(input_dev,
-			ABS_MT_POSITION_Y, 0, SCREEN_MAX_Y, 0, 0);
+			ABS_MT_POSITION_Y, 0, SCREEN_MAX_Y + SCREEN_BOUNDARY_ADJUST_VALUE, 0, 0);
 	input_set_abs_params(input_dev,
 			ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
 	//input_set_abs_params(input_dev,

@@ -503,6 +503,9 @@ static const char *rt5625_eq_sel[] = {"NORMAL", "CLUB","DANCE", "LIVE","POP",			
 					"ROCK", "OPPO", "TREBLE", "BASS"};					
 #endif
 
+static const char *rt5625_AUXOUT_mode[] = {"Differential mode", "Single-ended mode"}; 
+static const char *rt5625_Differential_Input_Control[] = {"Disable", "Enable"};  
+
 static const struct soc_enum rt5625_enum[] = {
 
 SOC_ENUM_SINGLE(VIRTUAL_REG_FOR_MISC_FUNC, 0, 4, rt5625_aec_path_sel),		/*0*/
@@ -522,7 +525,12 @@ SOC_ENUM_SINGLE(VIRTUAL_REG_FOR_MISC_FUNC, 12, 9, rt5625_eq_sel),    /*EQ mode s
 #endif
 };
 
-
+static const struct soc_enum rt5625_differential_enum[] = {
+SOC_ENUM_SINGLE(RT5625_OUTPUT_MIXER_CTRL, 4, 2, rt5625_AUXOUT_mode),         /*0*/
+SOC_ENUM_SINGLE(RT5625_PHONEIN_VOL, 13, 2, rt5625_Differential_Input_Control),/*1*/
+SOC_ENUM_SINGLE(RT5625_MIC_VOL, 15, 2, rt5625_Differential_Input_Control),        /*2*/
+SOC_ENUM_SINGLE(RT5625_MIC_VOL, 7, 2, rt5625_Differential_Input_Control),         /*3*/
+};
 
 //*****************************************************************************
 //function:Enable the Voice PCM interface Path
@@ -959,6 +967,10 @@ SOC_SINGLE_EXT("VoDSP Dump", VIRTUAL_REG_FOR_MISC_FUNC, 8, 1, 0,
 #if (RT5625_EQ_FUNC_ENA==1)			
 SOC_ENUM_EXT("EQ Mode", rt5625_enum[12], snd_soc_get_enum_double, rt5625_eq_sel_put),				
 #endif
+SOC_ENUM("AUXOUT mode switch", rt5625_differential_enum[0]),
+SOC_ENUM("Phone Differential Input Control", rt5625_differential_enum[1]),
+SOC_ENUM("MIC1 Differential Input Control", rt5625_differential_enum[2]),
+SOC_ENUM("MIC2 Differential Input Control", rt5625_differential_enum[3]),
 };
 
 static int rt5625_add_controls(struct snd_soc_codec *codec)
