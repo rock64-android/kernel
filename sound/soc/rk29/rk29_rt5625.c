@@ -227,7 +227,11 @@ static struct snd_soc_dai_link rk29_dai[] = {
 	{
 		.name = "RT5625-1",
 		.stream_name = "RT5625 PCM-1",
+		#if defined(CONFIG_SND_RK29_SOC_I2S_8CH)
+		.cpu_dai = &rk29_i2s_dai[0],
+		#elif defined(CONFIG_SND_RK29_SOC_I2S_2CH)
 		.cpu_dai = &rk29_i2s_dai[1],
+		#endif
 		.codec_dai = &rt5625_dai[0],
 		.init = rk29_rt5625_init,
 		.ops = &rk29_ops,
@@ -235,7 +239,11 @@ static struct snd_soc_dai_link rk29_dai[] = {
 	{
 		.name = "RT5625-2",
 		.stream_name = "RT5625 PCM-2",
+		#if defined(CONFIG_SND_RK29_SOC_I2S_8CH)
+		.cpu_dai = &rk29_i2s_dai[0],
+		#elif defined(CONFIG_SND_RK29_SOC_I2S_2CH)
 		.cpu_dai = &rk29_i2s_dai[1],
+		#endif
 		.codec_dai = &rt5625_dai[1],
 		.init = rk29_rt5625_init,
 		.ops = &rt5625_voice_ops,
