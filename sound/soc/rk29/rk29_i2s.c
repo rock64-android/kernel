@@ -166,6 +166,7 @@ static void rockchip_snd_txctrl(struct rk29_i2s_info *i2s, int on, bool stopI2S)
 		//if ((flag_i2s_tx == 0) && (flag_i2s_rx == 0))
 		if ((xfer&I2S_TX_TRAN_START)==0 || (xfer&I2S_RX_TRAN_START)==0)
 		{
+			printk("---- tx start i2s. ----\n");
 			clk = i2s0_clk_enter();
 			
 			//if start tx & rx clk, need reset i2s
@@ -195,6 +196,7 @@ static void rockchip_snd_txctrl(struct rk29_i2s_info *i2s, int on, bool stopI2S)
 			writel(opr, &(pheadi2s->I2S_DMACR));  
 			if(stopI2S)	
 			{
+				printk("---- tx stop i2s. ----\n");
 				clk = i2s0_clk_enter();
 	
 				xfer &= ~I2S_RX_TRAN_START;
@@ -229,6 +231,7 @@ static void rockchip_snd_rxctrl(struct rk29_i2s_info *i2s, int on, bool stopI2S)
 		//if ((flag_i2s_tx == 0) && (flag_i2s_rx == 0))
 		if ((xfer&I2S_TX_TRAN_START)==0 || (xfer&I2S_RX_TRAN_START)==0)
 		{
+			printk("---- rx start i2s. ----\n");
 			clk = i2s0_clk_enter();
 			
 			xfer |= I2S_TX_TRAN_START;
@@ -257,6 +260,7 @@ static void rockchip_snd_rxctrl(struct rk29_i2s_info *i2s, int on, bool stopI2S)
 		
 			if(stopI2S)	
 			{
+				printk("---- rx stop i2s. ----\n");
 				clk = i2s0_clk_enter();
 			
 				xfer &= ~I2S_RX_TRAN_START;
@@ -632,8 +636,8 @@ static int rk29_i2s_probe(struct platform_device *pdev,
 
 	/* Mark ourselves as in TXRX mode so we can run through our cleanup
 	 * process without warnings. */
-	rockchip_snd_txctrl(i2s, 0, true);
-	rockchip_snd_rxctrl(i2s, 0, true);
+	rockchip_snd_txctrl(i2s, 0, false);
+	rockchip_snd_rxctrl(i2s, 0, false);
 
 	return 0;
 }
@@ -709,11 +713,8 @@ static int __devinit rockchip_i2s_probe(struct platform_device *pdev)
 
 	i2s->dma_capture->client = &rk29_dma_client_in;
 	i2s->dma_capture->dma_size = 4;
-	i2s->dma_capture->flag = 0;			//add by sxj, used for burst change
 	i2s->dma_playback->client = &rk29_dma_client_out;
 	i2s->dma_playback->dma_size = 4;
-	i2s->dma_playback->flag = 0;			//add by sxj, used for burst change
-
 
 	i2s->iis_clk = clk_get(&pdev->dev, "i2s");
 	I2S_DBG("Enter:%s, %d, iis_clk=%d\n", __FUNCTION__, __LINE__, i2s->iis_clk);
