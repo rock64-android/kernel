@@ -90,7 +90,8 @@ struct soc_camera_host_ops {
 	unsigned int (*poll)(struct file *, poll_table *);
 	const struct v4l2_queryctrl *controls;
 	int num_controls;
-
+    const struct v4l2_querymenu *menus;                /* ddl@rock-chips.com : Add ioctrl -VIDIOC_QUERYMENU */
+    int num_menus;      /* ddl@rock-chips.com : Add ioctrl -VIDIOC_QUERYMENU */
     int (*s_stream)(struct soc_camera_device *, int enable);	/* ddl@rock-chips.com : Add stream control for host */
 
 };

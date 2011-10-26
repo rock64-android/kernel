@@ -721,12 +721,32 @@ static int soc_camera_querymenu(struct file *file, void *priv,
 {
     struct soc_camera_file *icf = file->private_data;
     struct soc_camera_device *icd = icf->icd;
+    struct soc_camera_host *ici = to_soc_camera_host(icd->dev.parent);
     struct v4l2_queryctrl qctrl;
     int i,j;
 
     qctrl.id = qm->id;
 
     if (soc_camera_queryctrl(file,priv, &qctrl) == 0) {
+
+        for (i = 0; i < ici->ops->num_menus; i++) {
+            if (qm->id == ici->ops->menus[i].id) {
+                for (j=0; j<=(qctrl.maximum - qctrl.minimum); j++) {
+
+                    if (qm->index == ici->ops->menus[i].index) {
+                        snprintf(qm->name, sizeof(qm->name), ici->ops->menus[i].name);
+                        qm->reserved = 0;
+
+                        return 0;
+                    } else {
+                        i++;
+                        if ( i >= icd->ops->num_menus)
+                            break;
+                    }
+                }
+            }
+        }
+        
         for (i = 0; i < icd->ops->num_menus; i++) {
             if (qm->id == icd->ops->menus[i].id) {
                 for (j=0; j<=(qctrl.maximum - qctrl.minimum); j++) {
