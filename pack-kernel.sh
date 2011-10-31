@@ -8,7 +8,7 @@ arch/arm/mach-rk29/ddr.c
 arch/arm/mach-rk29/vpu*.c
 
 drivers/staging/rk29/ipp/rk29-ipp.c
-sound/soc/codecs/rt5625.c
+#sound/soc/codecs/rt5625.c
 )
 
 DIRS=(
@@ -94,8 +94,8 @@ for d in ${DIRS[@]}; do
 done
 
 #zwp
-mv sound/soc/codecs/rt5625.c sound/soc/codecs/rt5625.c.bak
-mv sound/soc/codecs/rt5625.c.enc sound/soc/codecs/rt5625.c
+#mv sound/soc/codecs/rt5625.c sound/soc/codecs/rt5625.c.bak
+#mv sound/soc/codecs/rt5625.c.enc sound/soc/codecs/rt5625.c
 ####
 
 echo build kernel on $kerndir with $defconfig
@@ -120,8 +120,8 @@ for d in ${DIRS[@]}; do
 done
 
 #zwp
-mv sound/soc/codecs/rt5625.c sound/soc/codecs/rt5625.c.enc
-mv sound/soc/codecs/rt5625.c.bak sound/soc/codecs/rt5625.c
+#mv sound/soc/codecs/rt5625.c sound/soc/codecs/rt5625.c.enc
+#mv sound/soc/codecs/rt5625.c.bak sound/soc/codecs/rt5625.c
 ####
 
 make distclean >/dev/null 2>&1
@@ -139,8 +139,8 @@ done
 for file in ${EXCLUDES[@]}; do
 	echo "$file" >> $ex
 done
-echo sound/soc/codecs/rt5625.c >>$ex
-echo sound/soc/codecs/rt5625.c.enc >>$ex
+#echo sound/soc/codecs/rt5625.c >>$ex
+#echo sound/soc/codecs/rt5625.c.enc >>$ex
 echo TAR $(pwd)/$package
 tar cf $package --numeric-owner --exclude-from $ex --exclude=.git --exclude=`basename $0` $(basename $kerndir)
 tar rf $package --numeric-owner --exclude=.git toolchain/arm-eabi-4.4.0
