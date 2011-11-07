@@ -404,7 +404,7 @@ _AllocateMemory(
         /* Return pool used for allocation. */
         *Pool = pool;
     } else {
-        printk("_AllocateMemory fail! pool=%d, Bytes=%d, Type=%d\n", pool, (int)Bytes, Type);
+        printk("_AllocateMemory fail! pool=%d->%d, Bytes=%d, Type=%d\n", *Pool, pool, (int)Bytes, Type);
     }
 
     /* Return status. */

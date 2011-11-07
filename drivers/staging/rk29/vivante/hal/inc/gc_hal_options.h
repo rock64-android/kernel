@@ -330,5 +330,17 @@
 */
 #define gcdkUSE_MAPED_NONPAGE_CACHE         20
 
+
+/*
+    dkm : USE_DMA_COHERENT
+
+    use dma_alloc_* to alloc no page memory
+    USE_DMA_COHERENT : 
+        0  - no use  
+        1  - use
+*/
+#define USE_DMA_COHERENT                    1
+
+
 #endif /* __gc_hal_options_h_ */
 
