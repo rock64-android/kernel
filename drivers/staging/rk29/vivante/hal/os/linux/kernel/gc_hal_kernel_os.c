@@ -38,6 +38,9 @@
 #include <linux/delay.h>
 #include <mach/pmu.h>
 #include <mach/cru.h>
+#if BUILD_FOR_1_28
+#define __GFP_NO_KSWAPD	((__force gfp_t)0x400000u)
+#endif
 
 #if !USE_NEW_LINUX_SIGNAL
 #define USER_SIGNAL_TABLE_LEN_INIT  64

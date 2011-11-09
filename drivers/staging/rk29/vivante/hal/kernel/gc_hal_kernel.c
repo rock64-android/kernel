@@ -19,8 +19,7 @@
 *****************************************************************************/
 
 
-
-
+#include <linux/string.h>
 #include "gc_hal_kernel_precomp.h"
 
 #define _GC_OBJ_ZONE    gcvZONE_KERNEL
@@ -468,6 +467,10 @@ gckKERNEL_Dispatch(
         gcmkONERROR(
             gckOS_GetBaseAddress(Kernel->os,
                                  &Interface->u.GetBaseAddress.baseAddress));
+        strcpy(Interface->u.GetBaseAddress.fwVersion, GPU_FW_VERSION);
+#if BUILD_FOR_1_28
+        strcat(Interface->u.GetBaseAddress.fwVersion, "_for1.28");
+#endif
         break;
 
     case gcvHAL_QUERY_VIDEO_MEMORY:

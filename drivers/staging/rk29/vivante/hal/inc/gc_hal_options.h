@@ -262,6 +262,24 @@
 
 /* ============================== add by rockchip ===================================*/
 /*
+    dkm : GPU_FW_VERSION
+    
+    GPU固件版本(最大19个字符串)
+*/
+#define GPU_FW_VERSION                      "2.2.1"
+
+
+/*
+    dkm : BUILD_FOR_1_28
+    
+    出1.28版本补丁用
+    0: 默认编译
+    1: 编译1.28可用的driver
+*/
+#define BUILD_FOR_1_28                      0                  
+
+
+/*
     dkm : gcdENABLE_AUTO_FREQ
     0: 关闭自动调频
     1: 根据GPU负荷自动调节GPU的CORE频率
@@ -309,7 +327,11 @@
     限制gckOS_AllocatePagedMemoryEx向系统申请page，避免太大系统分配不出来时会导致系统卡顿(会不停flush cache)
     新的内核已经修正了这一问题
 */
-#define gcdPAGE_ALLOC_LIMIT                 0
+#if !BUILD_FOR_1_28
+    #define gcdPAGE_ALLOC_LIMIT                 0
+#else
+    #define gcdPAGE_ALLOC_LIMIT                 1
+#endif
 
 
 /*
