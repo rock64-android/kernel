@@ -201,8 +201,16 @@ int reg_recv_data(struct i2c_client *client, unsigned short *reg, unsigned short
 
 int wm8994_set_status(void)
 {
-	struct wm8994_priv *wm8994 = wm8994_codec->private_data;	
+	struct wm8994_priv *wm8994 = NULL;	
 	int ret = 1;
+
+	if(wm8994_codec == NULL )
+		return -1;
+	
+	wm8994 = wm8994_codec->private_data;
+
+	if(wm8994 == NULL)
+		return -1;
 	
 	if(wm8994->route_status != IDLE)
 		ret = -BUSY;
