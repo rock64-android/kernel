@@ -266,7 +266,7 @@
     
     GPU固件版本(最大19个字符串)
 */
-#define GPU_FW_VERSION                      "2.2.1"
+#define GPU_FW_VERSION                      "2.2.2"
 
 
 /*
@@ -327,11 +327,8 @@
     限制gckOS_AllocatePagedMemoryEx向系统申请page，避免太大系统分配不出来时会导致系统卡顿(会不停flush cache)
     新的内核已经修正了这一问题
 */
-#if !BUILD_FOR_1_28
-    #define gcdPAGE_ALLOC_LIMIT                 0
-#else
-    #define gcdPAGE_ALLOC_LIMIT                 1
-#endif
+#define gcdPAGE_ALLOC_LIMIT                 0
+
 
 
 /*
@@ -361,7 +358,7 @@
         0  - no use  
         1  - use
 */
-#define USE_DMA_COHERENT                    1
+#define USE_DMA_COHERENT                    0
 
 
 #endif /* __gc_hal_options_h_ */

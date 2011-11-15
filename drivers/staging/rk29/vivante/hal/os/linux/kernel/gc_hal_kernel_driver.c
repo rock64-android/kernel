@@ -346,7 +346,7 @@ int drv_release(struct inode* inode, struct file* filp)
 	gcmkVERIFY_OK(gckCOMMAND_Stall(device->kernel->command));
 #else
     // dkm: 保留delay的做法
-    mdelay(500);
+    gcmkVERIFY_OK(gckOS_Delay(galDevice->os, 1000));
 #endif
 
     gcmkVERIFY_OK(
