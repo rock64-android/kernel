@@ -864,9 +864,9 @@ out:
 		wm8994_set_bit(0x1A,  0x1FF , 320+(pdata->recorder_vol+16)*10/15);  //mic vol	
 	else
 	{
-		pdata->recorder_vol -= 30;
+	//	pdata->recorder_vol -= 30;
 		wm8994_set_bit(0x2A,  0x0010, 0x0010); //IN1R_TO_MIXINR   IN1R_MIXINR_VOL
-		wm8994_set_bit(0x1A,  0x1FF , 320+(pdata->recorder_vol+16)*10/15);  //mic vol	
+		wm8994_set_bit(0x1A,  0x1FF , 320+(pdata->recorder_vol+16-30)*10/15);  //mic vol	
 	}	
 }
 
