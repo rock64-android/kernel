@@ -43,6 +43,13 @@ struct dw_mci_dma_slave {
 	unsigned int dmach;
 };
 
+struct dw_mci_dma_slave {
+	struct dma_chan *ch;
+	enum dma_transfer_direction direction;
+	unsigned int dmach;
+};
+
+
 struct mmc_data;
 
 /**

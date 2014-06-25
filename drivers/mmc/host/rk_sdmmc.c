@@ -708,6 +708,7 @@ static const struct dw_mci_dma_ops dw_mci_edmac_ops = {
         .cleanup = dw_mci_edma_cleanup,
 };
 #endif
+
 static int dw_mci_pre_dma_transfer(struct dw_mci *host,
 				   struct mmc_data *data,
 				   bool next)
