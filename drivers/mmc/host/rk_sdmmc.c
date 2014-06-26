@@ -3928,18 +3928,18 @@ EXPORT_SYMBOL(dw_mci_suspend);
 
 int dw_mci_resume(struct dw_mci *host)
 {
-	int i, ret, retry_cnt = 0;
-	u32 regs;
+        int i, ret, retry_cnt = 0;
+        u32 regs;
         struct dw_mci_slot *slot;
     
-        if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO){
+        if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO){
                 slot = mmc_priv(host->mmc);
-
                 if(!test_bit(DW_MMC_CARD_PRESENT, &slot->flags))
                         return 0;
         }
-    	/*only for sdmmc controller*/
-	if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) {
+
+        /*only for sdmmc controller*/
+	if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD){
 		disable_irq_wake(host->mmc->slot.cd_irq);
                 mmc_gpio_free_cd(host->mmc);
 		if(pinctrl_select_state(host->pinctrl, host->pins_default) < 0)
@@ -3979,12 +3979,11 @@ int dw_mci_resume(struct dw_mci *host)
 	 * Restore the initial value at FIFOTH register
 	 * And Invalidate the prev_blksz with zero
 	 */
-	mci_writel(host, FIFOTH, host->fifoth_val);
-	host->prev_blksz = 0;
+        mci_writel(host, FIFOTH, host->fifoth_val);
+        host->prev_blksz = 0;
 	/* Put in max timeout */
-	mci_writel(host, TMOUT, 0xFFFFFFFF);
-
-	mci_writel(host, RINTSTS, 0xFFFFFFFF);
+        mci_writel(host, TMOUT, 0xFFFFFFFF);
+        mci_writel(host, RINTSTS, 0xFFFFFFFF);
 	regs = SDMMC_INT_CMD_DONE | SDMMC_INT_DATA_OVER | SDMMC_INT_TXDR | SDMMC_INT_RXDR | SDMMC_INT_VSI |
 		   DW_MCI_ERROR_FLAGS;
 	if(!(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO))
