@@ -50,7 +50,7 @@
 #include <linux/regulator/rockchip_io_vol_domain.h>
 #include "../../clk/rockchip/clk-ops.h"
 
-#define RK_SDMMC_DRIVER_VERSION "Ver 1.12 2014-07-08"
+#define RK_SDMMC_DRIVER_VERSION "Ver 1.13 2014-09-05"
 
 /* Common flag combinations */
 #define DW_MCI_DATA_ERROR_FLAGS	(SDMMC_INT_DRTO | SDMMC_INT_DCRC | \
@@ -708,7 +708,6 @@ static const struct dw_mci_dma_ops dw_mci_edmac_ops = {
         .cleanup = dw_mci_edma_cleanup,
 };
 #endif
-
 static int dw_mci_pre_dma_transfer(struct dw_mci *host,
 				   struct mmc_data *data,
 				   bool next)
@@ -2753,7 +2752,6 @@ static void dw_mci_cmd_interrupt(struct dw_mci *host, u32 status)
                 mod_timer(&host->dto_timer, jiffies + msecs_to_jiffies(4500 * multi));//max wait 8s larger
         }
 
-cmd_exit:
         smp_wmb();
         set_bit(EVENT_CMD_COMPLETE, &host->pending_events);
 	tasklet_schedule(&host->tasklet);
@@ -3928,18 +3926,18 @@ EXPORT_SYMBOL(dw_mci_suspend);
 
 int dw_mci_resume(struct dw_mci *host)
 {
-        int i, ret, retry_cnt = 0;
-        u32 regs;
+	int i, ret, retry_cnt = 0;
+	u32 regs;
         struct dw_mci_slot *slot;
     
-        if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO){
+        if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO){
                 slot = mmc_priv(host->mmc);
+
                 if(!test_bit(DW_MMC_CARD_PRESENT, &slot->flags))
                         return 0;
         }
-
-        /*only for sdmmc controller*/
-	if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD){
+    	/*only for sdmmc controller*/
+	if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) {
 		disable_irq_wake(host->mmc->slot.cd_irq);
                 mmc_gpio_free_cd(host->mmc);
 		if(pinctrl_select_state(host->pinctrl, host->pins_default) < 0)
@@ -3979,11 +3977,12 @@ int dw_mci_resume(struct dw_mci *host)
 	 * Restore the initial value at FIFOTH register
 	 * And Invalidate the prev_blksz with zero
 	 */
-        mci_writel(host, FIFOTH, host->fifoth_val);
-        host->prev_blksz = 0;
+	mci_writel(host, FIFOTH, host->fifoth_val);
+	host->prev_blksz = 0;
 	/* Put in max timeout */
-        mci_writel(host, TMOUT, 0xFFFFFFFF);
-        mci_writel(host, RINTSTS, 0xFFFFFFFF);
+	mci_writel(host, TMOUT, 0xFFFFFFFF);
+
+	mci_writel(host, RINTSTS, 0xFFFFFFFF);
 	regs = SDMMC_INT_CMD_DONE | SDMMC_INT_DATA_OVER | SDMMC_INT_TXDR | SDMMC_INT_RXDR | SDMMC_INT_VSI |
 		   DW_MCI_ERROR_FLAGS;
 	if(!(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO))

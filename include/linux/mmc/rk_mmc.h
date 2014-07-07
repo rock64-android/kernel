@@ -43,13 +43,6 @@ struct dw_mci_dma_slave {
 	unsigned int dmach;
 };
 
-struct dw_mci_dma_slave {
-	struct dma_chan *ch;
-	enum dma_transfer_direction direction;
-	unsigned int dmach;
-};
-
-
 struct mmc_data;
 
 /**
@@ -165,6 +158,8 @@ struct dw_mci {
 #ifdef CONFIG_MMC_DW_EDMAC
         struct dw_mci_dma_slave *dms;
 	void                    *phy_regs;
+#else
+	struct dw_mci_dma_data	*dma_data;
 #endif
 	u32			cmd_status;
 	u32			data_status;
