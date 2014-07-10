@@ -212,7 +212,7 @@
 		rockchip,timeout = <60>;
 		rockchip,atboot = <1>;
 		rockchip,debug = <0>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	amba {
