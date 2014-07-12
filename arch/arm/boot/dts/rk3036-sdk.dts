@@ -159,3 +159,7 @@
 &lcdc {
 	status = "okay";
 };
+
+&tve {
+	status = "okay";
+};
