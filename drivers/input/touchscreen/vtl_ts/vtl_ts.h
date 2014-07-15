@@ -16,7 +16,7 @@
 #define OLD_PROTOCOL		0x01
 #define	NEW_PROTOCOL		0x02
 
-#define TB1_USE_F402            0
+#define TB1_USE_F402            1
 
 /***********************vtl ts driver config ******************************************/
 
