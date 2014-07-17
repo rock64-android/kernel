@@ -758,7 +758,7 @@
 		396000
 		528000
 		>;
-	auto-freq=<1>;
+	auto-freq=<0>;
 	status="okay";
 };
 /include/ "act8846.dtsi"
