@@ -429,14 +429,15 @@ static void __init arch_counter_register(unsigned type)
 	else
 		arch_timer_read_counter = arch_counter_get_cntvct_mem;
 
+	if (!arch_timer_use_virtual)
+		if (arch_timer_read_counter == arch_counter_get_cntvct)
+			arch_timer_read_counter = arch_counter_get_cntpct;
+
 	start_count = arch_timer_read_counter();
 	clocksource_register_hz(&clocksource_counter, arch_timer_rate);
 	cyclecounter.mult = clocksource_counter.mult;
 	cyclecounter.shift = clocksource_counter.shift;
 	timecounter_init(&timecounter, &cyclecounter, start_count);
-
-	/* 56 bits minimum, so we assume worst case rollover */
-	sched_clock_register(arch_timer_read_counter, 56, arch_timer_rate);
 }
 
 static void __cpuinit arch_timer_stop(struct clock_event_device *clk)
@@ -661,11 +662,6 @@ static void __init arch_timer_init(struct device_node *np)
 			return;
 		}
 	}
-
-	if (arch_timer_use_virtual)
-		arch_timer_read_counter = arch_counter_get_cntvct;
-	else
-		arch_timer_read_counter = arch_counter_get_cntpct;
 
 	arch_timer_register();
 	arch_timer_common_init();
