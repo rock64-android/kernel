@@ -4052,9 +4052,6 @@ int dw_mci_suspend(struct dw_mci *host)
         if(host->vmmc)
                 regulator_disable(host->vmmc);
 
-        if(host->use_dma && host->dma_ops->exit)
-                host->dma_ops->exit(host);
-
         /*only for sdmmc controller*/
         if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) {
                 host->mmc->rescan_disable = 1;
@@ -4088,13 +4085,8 @@ int dw_mci_resume(struct dw_mci *host)
     
         if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO) {
                 slot = mmc_priv(host->mmc);
-                if (!test_bit(DW_MMC_CARD_PRESENT, &slot->flags)) {
-			/* edmac contains exit function call when suspend*/
-			if(host->use_dma && host->dma_ops->init && host->dma_ops->exit)
-				host->dma_ops->init(host);
-
+                if(!test_bit(DW_MMC_CARD_PRESENT, &slot->flags))
 			return 0;
-		}
         }
 
     	/*only for sdmmc controller*/
@@ -4131,8 +4123,9 @@ int dw_mci_resume(struct dw_mci *host)
 		return ret;
 	}
 
-	if(host->use_dma && host->dma_ops->init)
-		host->dma_ops->init(host);
+	if(!(cpu_is_rk3036() || cpu_is_rk312x()))
+		if(host->use_dma && host->dma_ops->init)
+			host->dma_ops->init(host);
 
 	/*
 	 * Restore the initial value at FIFOTH register
