@@ -2809,6 +2809,7 @@ static void dw_mci_cmd_interrupt(struct dw_mci *host, u32 status)
                 mod_timer(&host->dto_timer, jiffies + msecs_to_jiffies(4000 * multi));
         }
 
+cmd_exit:
         smp_wmb();
         set_bit(EVENT_CMD_COMPLETE, &host->pending_events);
 	tasklet_schedule(&host->tasklet);

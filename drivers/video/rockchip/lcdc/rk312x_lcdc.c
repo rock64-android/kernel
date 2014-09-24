@@ -34,10 +34,7 @@
 #include <linux/rockchip/grf.h>
 #include <linux/rockchip/common.h>
 #include <dt-bindings/clock/rk_system_status.h>
-#if defined(CONFIG_ION_ROCKCHIP)
-#include <linux/rockchip/iovmm.h>
-#include <linux/rockchip/sysmmu.h>
-#endif
+#include <linux/rockchip-iovmm.h>
 #include "rk312x_lcdc.h"
 
 static int dbg_thresd;
