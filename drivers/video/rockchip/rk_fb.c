@@ -3424,44 +3424,42 @@ int rk_fb_switch_screen(struct rk_screen *screen, int enable, int lcdc_id)
 		dev_drv->cur_screen->x_mirror = dev_drv->rotate_mode & X_MIRROR;
 		dev_drv->cur_screen->y_mirror = dev_drv->rotate_mode & Y_MIRROR;
 	}
-	if (!dev_drv->uboot_logo) {
-		for (i = 0; i < dev_drv->lcdc_win_num; i++) {
-			info = rk_fb->fb[dev_drv->fb_index_base + i];
-			fb_par = (struct rk_fb_par *)info->par;
-			win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
-			if (dev_drv->win[win_id]) {
-				if (rk_fb->disp_mode == DUAL) {
-					pmy_info = rk_fb->fb[i];
-					if (pmy_info != info) {
-						pmy_fb_par =
-							(struct rk_fb_par *)pmy_info->par;
-						fb_par->state = pmy_fb_par->state;
-					}
-				}
-				if (fb_par->state) {
-					if (!dev_drv->win[win_id]->state)
-						dev_drv->ops->open(dev_drv, win_id, 1);
-					if (!load_screen) {
-						dev_drv->ops->load_screen(dev_drv, 1);
-						load_screen = 1;
-					}
-					info->var.activate |= FB_ACTIVATE_FORCE;
-					if (rk_fb->disp_mode == DUAL) {
-						rk_fb_update_ext_info(info, pmy_info, 1);
-					} else if (rk_fb->disp_mode == ONE_DUAL) {
-						info->var.grayscale &= 0xff;
-						info->var.grayscale |=
-							(dev_drv->cur_screen->xsize << 8) +
-							(dev_drv->cur_screen->ysize << 20);
-					}
-					info->fbops->fb_set_par(info);
-					info->fbops->fb_pan_display(&info->var, info);
+
+	for (i = 0; i < dev_drv->lcdc_win_num; i++) {
+		info = rk_fb->fb[dev_drv->fb_index_base + i];
+		fb_par = (struct rk_fb_par *)info->par;
+		win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
+		if (dev_drv->win[win_id]) {
+			if (rk_fb->disp_mode == DUAL) {
+				pmy_info = rk_fb->fb[i];
+				if (pmy_info != info) {
+					pmy_fb_par =
+						(struct rk_fb_par *)pmy_info->par;
+					fb_par->state = pmy_fb_par->state;
 				}
 			}
+			if (fb_par->state) {
+				if (!dev_drv->win[win_id]->state)
+					dev_drv->ops->open(dev_drv, win_id, 1);
+				if (!load_screen) {
+					dev_drv->ops->load_screen(dev_drv, 1);
+					load_screen = 1;
+				}
+				info->var.activate |= FB_ACTIVATE_FORCE;
+				if (rk_fb->disp_mode == DUAL) {
+					rk_fb_update_ext_info(info, pmy_info, 1);
+				} else if (rk_fb->disp_mode == ONE_DUAL) {
+					info->var.grayscale &= 0xff;
+					info->var.grayscale |=
+						(dev_drv->cur_screen->xsize << 8) +
+						(dev_drv->cur_screen->ysize << 20);
+				}
+				info->fbops->fb_set_par(info);
+				info->fbops->fb_pan_display(&info->var, info);
+			}
 		}
-	}else {
-		dev_drv->uboot_logo = 0;
 	}
+
 	hdmi_switch_complete = 1;
 	if (rk_fb->disp_mode == ONE_DUAL) {
 		if (dev_drv->ops->set_screen_scaler)
@@ -3965,7 +3963,6 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 #endif
 
 		rk_fb_alloc_buffer(main_fbi, 0);	/* only alloc memory for main fb */
-		dev_drv->uboot_logo = support_uboot_display();
 		if (support_uboot_display()) {
 			/*
 			if (dev_drv->iommu_enabled)
