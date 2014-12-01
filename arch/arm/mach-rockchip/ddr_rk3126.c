@@ -734,7 +734,7 @@ static uint32 *p_ddr_freq;
 uint32 DEFINE_PIE_DATA(ddr_sr_idle);
 uint32 DEFINE_PIE_DATA(ddr_dll_status);	/* 记录ddr dll的状态，在selfrefresh exit时选择是否进行dll reset*/
 
-static const uint32_t ddr3_cl_cwl[22][4] = {
+uint32_t ddr3_cl_cwl[22][4] = {
 /*   0~330           330~400         400~533        speed
 * tCK  >3             2.5~3          1.875~2.5     1.875~1.5
 *    cl<<16, cwl    cl<<16, cwl     cl<<16, cwl              */
@@ -768,7 +768,7 @@ static const uint32_t ddr3_cl_cwl[22][4] = {
 	{((6 << 16) | 5), ((6 << 16) | 5), ((8 << 16) | 6), ((10 << 16) | 7)}	/*DDR3_DEFAULT*/
 };
 
-static const uint32_t ddr3_tRC_tFAW[22] = {
+uint32_t ddr3_tRC_tFAW[22] = {
 /**    tRC    tFAW   */
 	((50 << 16) | 50),	/*DDR3_800D*/
 	((53 << 16) | 50),	/*DDR3_800E*/
@@ -989,7 +989,7 @@ __sramdata uint32 copy_data[8] = {
 };
 
  EXPORT_PIE_SYMBOL(copy_data[8]);
-static uint32 *p_copy_data;
+uint32 *p_copy_data;
 
 /*----------------------------------------------------------------------
 Name	: uint32_t __sramlocalfunc ddr_data_training(void)
@@ -2069,9 +2069,11 @@ static void __sramfunc ddr_selfrefresh_enter(uint32 nMHz)
 	pCRU_Reg->CRU_CLKGATE_CON[0] = ((0x1 << 2) << 16) | (1 << 2);	/*disable DDR PHY clock*/
 	ddr_delayus(1);
 }
+
+/*EXPORT_SYMBOL(ddr_selfrefresh_enter);*/
 #endif
 
-static uint32 dtt_buffer[8];
+uint32 dtt_buffer[8];
 
 /*----------------------------------------------------------------------
 *Name    : void ddr_dtt_check(void)
@@ -2080,7 +2082,7 @@ static uint32 dtt_buffer[8];
 *Return  : void
 *Notes   :
 *----------------------------------------------------------------------*/
-static void ddr_dtt_check(void)
+void ddr_dtt_check(void)
 {
 	uint32 i;
 	for (i = 0; i < 8; i++) {
@@ -2129,7 +2131,7 @@ static void __sramfunc ddr_selfrefresh_exit(void)
 *Return  : void
 *Notes   :
 *----------------------------------------------------------------------*/
-static void __sramlocalfunc ddr_change_freq_in(uint32 freq_slew)
+void __sramlocalfunc ddr_change_freq_in(uint32 freq_slew)
 {
 	uint32 value_100n, value_1u;
 
@@ -2158,7 +2160,7 @@ static void __sramlocalfunc ddr_change_freq_in(uint32 freq_slew)
 *Return  : void
 *Notes   :
 *----------------------------------------------------------------------*/
-static void __sramlocalfunc ddr_change_freq_out(uint32 freq_slew)
+void __sramlocalfunc ddr_change_freq_out(uint32 freq_slew)
 {
 	if (freq_slew == 1) {
 		pDDR_Reg->TOGCNT100N = DATA(ddr_reg).pctl_timing.togcnt100n;
@@ -2460,6 +2462,8 @@ static int _ddr_change_freq(uint32 nMHz)
 	return ret;
 }
 
+EXPORT_SYMBOL(_ddr_change_freq);
+
 /*----------------------------------------------------------------------
 *Name    : void ddr_set_auto_self_refresh(bool en)
 *Desc    : 设置进入 selfrefesh 的周期数
@@ -2467,11 +2471,13 @@ static int _ddr_change_freq(uint32 nMHz)
 *Return  : 频率值
 *Notes   : 周期数为1*32 cycle
 *----------------------------------------------------------------------*/
-static void _ddr_set_auto_self_refresh(bool en)
+void _ddr_set_auto_self_refresh(bool en)
 {
 	/*set auto self-refresh idle    */
 	*kern_to_pie(rockchip_pie_chunk, &DATA(ddr_sr_idle)) = en ? SR_IDLE : 0;
 }
+
+EXPORT_SYMBOL(_ddr_set_auto_self_refresh);
 
 /*----------------------------------------------------------------------
 *Name    : void __sramfunc ddr_suspend(void)
@@ -2480,6 +2486,7 @@ static void _ddr_set_auto_self_refresh(bool en)
 *Return  : void
 *Notes   :
 *----------------------------------------------------------------------*/
+#if 1
 void PIE_FUNC(ddr_suspend)(void)
 {
 	ddr_selfrefresh_enter(0);
@@ -2494,8 +2501,7 @@ void PIE_FUNC(ddr_suspend)(void)
 
 EXPORT_PIE_SYMBOL(FUNC(ddr_suspend));
 
-#if 0
-static void ddr_suspend(void)
+void ddr_suspend(void)
 {
 	uint32 i;
 	volatile uint32 n;
@@ -2519,8 +2525,11 @@ static void ddr_suspend(void)
 
 	fn_to_pie(rockchip_pie_chunk, &FUNC(ddr_suspend)) ();
 }
+
+EXPORT_SYMBOL(ddr_suspend);
 #endif
 
+#if 1
 /*----------------------------------------------------------------------
 *Name    : void __sramfunc ddr_resume(void)
 *Desc    : ddr resume
@@ -2549,11 +2558,12 @@ void PIE_FUNC(ddr_resume)(void)
 
 EXPORT_PIE_SYMBOL(FUNC(ddr_resume));
 
-#if 0
-static void ddr_resume(void)
+void ddr_resume(void)
 {
 	fn_to_pie(rockchip_pie_chunk, &FUNC(ddr_resume)) ();
 }
+
+EXPORT_SYMBOL(ddr_resume);
 #endif
 
 /*----------------------------------------------------------------------
@@ -2563,7 +2573,7 @@ static void ddr_resume(void)
 *Return  : 颗粒容量
 *Notes   :
 *----------------------------------------------------------------------*/
-static uint32 ddr_get_cap(void)
+uint32 ddr_get_cap(void)
 {
 	uint32 cs, bank, row, col, row1, bw;
 
@@ -2580,6 +2590,8 @@ static uint32 ddr_get_cap(void)
 		return (1 << (row + col + bank + bw));
 	}
 }
+
+EXPORT_SYMBOL(ddr_get_cap);
 
 static long _ddr_round_rate(uint32 nMHz)
 {
@@ -2603,7 +2615,7 @@ static void ddr_dfi_monitor_stop(void)
 	pGRF_Reg->GRF_SOC_CON[0] = DDR_MONITOR_DISB;
 }
 
-static void _ddr_bandwidth_get(struct ddr_bw_info *ddr_bw_ch0, struct ddr_bw_info *ddr_bw_ch1)
+void _ddr_bandwidth_get(struct ddr_bw_info *ddr_bw_ch0, struct ddr_bw_info *ddr_bw_ch1)
 {
 	uint32 ddr_bw_val[ddrbw_id_end], ddr_freq;
 	u64 temp64;
@@ -2631,6 +2643,7 @@ static void _ddr_bandwidth_get(struct ddr_bw_info *ddr_bw_ch0, struct ddr_bw_inf
 end:
 	ddr_dfi_monitor_strat();
 }
+EXPORT_SYMBOL(_ddr_bandwidth_get);
 
 /*----------------------------------------------------------------------
 *Name    : int ddr_init(uint32_t dram_speed_bin, uint32_t freq)
@@ -2640,7 +2653,7 @@ end:
 *Return  : 0 成功
 *Notes   :
 *----------------------------------------------------------------------*/
-static int ddr_init(uint32_t dram_speed_bin, uint32 freq)
+int ddr_init(uint32_t dram_speed_bin, uint32 freq)
 {
 	uint32_t value = 0;
 	uint32_t cs, die = 1;
@@ -2695,3 +2708,5 @@ static int ddr_init(uint32_t dram_speed_bin, uint32 freq)
 
 	return 0;
 }
+
+EXPORT_SYMBOL(ddr_init);
