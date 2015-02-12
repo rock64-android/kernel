@@ -5,5 +5,5 @@ config RTL8188EU
     select IEEE80211
     default y
 	---help---
-	  Help message of RTL8188EU & RTL8189ES
+	  Help message of RTL8188EU
 
