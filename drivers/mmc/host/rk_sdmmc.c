@@ -46,6 +46,7 @@
 #include <linux/clk-private.h>
 #include <linux/rockchip/cpu.h>
 #include <linux/rfkill-wlan.h>
+#include <linux/log2.h>
 #include "rk_sdmmc.h"
 #include "rk_sdmmc_dbg.h"
 #include <linux/regulator/rockchip_io_vol_domain.h>
@@ -637,7 +638,15 @@ static void dw_mci_edmac_start_dma(struct dw_mci *host, unsigned int sg_len)
 	else
 		burst_limit = 16;
 
-	slave_config.dst_maxburst = (mburst > burst_limit) ? burst_limit : mburst;
+	if (mburst > burst_limit) {
+		mburst = burst_limit;
+		fifoth_val = SDMMC_SET_FIFOTH(ilog2(mburst) - 1,
+						(host->fifo_depth) / 2 - 1,
+						(host->fifo_depth) / 2);
+		mci_writel(host, FIFOTH, fifoth_val);
+	}
+
+	slave_config.dst_maxburst = mburst;
 	slave_config.src_maxburst = slave_config.dst_maxburst;
 
 	if(host->data->flags & MMC_DATA_WRITE){
