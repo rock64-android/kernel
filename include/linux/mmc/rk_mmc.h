@@ -214,6 +214,11 @@ struct dw_mci {
 	struct pinctrl_state	*pins_default; /* Function port */
 	struct pinctrl_state	*pins_idle;    /* Gpio port */
 	struct pinctrl_state    *pins_udbg;    /* uart_dbg port */
+
+	u32	cid;
+	struct regmap	*grf;
+	u32 *regs_buffer;
+	const struct dw_mci_rst_ops *rst_ops;
 };
 
 /* DMA ops for Internal/External DMAC interface */
@@ -225,6 +230,12 @@ struct dw_mci_dma_ops {
 	void (*stop)(struct dw_mci *host);
 	void (*cleanup)(struct dw_mci *host);
 	void (*exit)(struct dw_mci *host);
+};
+
+/* Platform rst hook for pm ops before suspend and after resume */
+struct dw_mci_rst_ops {
+	void (*pre_suspend)(struct dw_mci *host);
+	void (*post_resume)(struct dw_mci *host);
 };
 
 /* IP Quirks/flags. */
