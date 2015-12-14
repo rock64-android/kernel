@@ -1900,6 +1900,9 @@ static int clk_pll_set_rate_3036_apll(struct clk_hw *hw, unsigned long rate,
 	unsigned long flags, arm_gpll_rate, old_rate, temp_rate;
 	u32 temp_div;
 
+	if (rate > SAFETY_FREQ)
+		rate = SAFETY_FREQ;
+
 	while (ps->rate) {
 		if (ps->rate == rate) {
 			break;
