@@ -169,12 +169,13 @@
 };
 
 &emmc {
-	clock-frequency = <50000000>;
-	clock-freq-min-max = <400000 50000000>;
+	clock-frequency = <125000000>;
+	clock-freq-min-max = <400000 125000000>;
 	supports-highspeed;
 	supports-emmc;
 	bootpart-no-access;
 	supports-DDR_MODE;
+	caps2-mmc-hs200;
 	ignore-pm-notify;
 	keep-power-in-suspend;
 	status = "okay";
@@ -223,6 +224,7 @@
 };
 
 &codec {
+	spk_depop_time = <200>;
 	status = "okay";
 };
 
@@ -380,7 +382,8 @@
 	/* phyirq-gpio = <&gpio0 GPIO_B1 GPIO_ACTIVE_LOW>; */
 	phy-mode = "rmii";
 	pinctrl-names = "default";
-	pinctrl-0 = <&rmii_pins>;
+	/* rmii_pins, rgmii_pins, phy_pins */
+	pinctrl-0 = <&phy_pins>;
 	clock_in_out = "output";
 	tx_delay = <0x30>;
 	rx_delay = <0x10>;

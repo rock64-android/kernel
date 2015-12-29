@@ -945,6 +945,21 @@ static int vcodec_fd_to_iova(struct vpu_subdev_data *data,
 	return mem_region->iova;
 }
 
+/*
+ * NOTE: rkvdec/rkhevc put scaling list address in pps buffer hardware will read
+ * it by pps id in video stream data.
+ *
+ * So we need to translate the address in iommu case. The address data is also
+ * 10bit fd + 22bit offset mode.
+ * Because userspace decoder do not give the pps id in the register file sets
+ * kernel driver need to translate each scaling list address in pps buffer which
+ * means 256 pps for H.264, 64 pps for H.265.
+ *
+ * In order to optimize the performance kernel driver ask userspace decoder to
+ * set all scaling list address in pps buffer to the same one which will be used
+ * on current decoding task. Then kernel driver can only translate the first
+ * address then copy it all pps buffer.
+ */
 static void fill_scaling_list_addr_in_pps(
 		struct vpu_subdev_data *data,
 		struct vpu_reg *reg,
@@ -953,47 +968,24 @@ static void fill_scaling_list_addr_in_pps(
 		int pps_info_size,
 		int scaling_list_addr_offset)
 {
-	int i = 0;
+	int base = scaling_list_addr_offset;
+	int scaling_fd = 0;
+	u32 scaling_offset;
 
-	for (i = 0; i < pps_info_count; i++) {
-		u32 scaling_offset;
-		int scaling_fd = 0;
-		int base = i * pps_info_size + scaling_list_addr_offset;
+	scaling_offset  = (u32)pps[base + 0];
+	scaling_offset += (u32)pps[base + 1] << 8;
+	scaling_offset += (u32)pps[base + 2] << 16;
+	scaling_offset += (u32)pps[base + 3] << 24;
 
-/*
-		pr_info("pps %02d pos %02d val %02x\n", i, base+0, pps[base+0]);
-		pr_info("pps %02d pos %02d val %02x\n", i, base+1, pps[base+1]);
-		pr_info("pps %02d pos %02d val %02x\n", i, base+2, pps[base+2]);
-		pr_info("pps %02d pos %02d val %02x\n", i, base+3, pps[base+3]);
+	scaling_fd = scaling_offset & 0x3ff;
+	scaling_offset = scaling_offset >> 10;
 
-		pr_info("pps val %02x%02x%02x%02x\n",
-				pps[base-1], pps[base-2],
-				pps[base-3], pps[base-4]);
-		if (!(pps[base-1] & 0x1)) {
-			pr_info("skip pps %d\n", i);
-			continue;
-		}
-*/
-		scaling_offset  = (u32)pps[base + 0];
-		scaling_offset += (u32)pps[base + 1] << 8;
-		scaling_offset += (u32)pps[base + 2] << 16;
-		scaling_offset += (u32)pps[base + 3] << 24;
+	if (scaling_fd > 0) {
+		int i = 0;
+		u32 tmp = vcodec_fd_to_iova(data, reg, scaling_fd);
+		tmp += scaling_offset;
 
-/*
-		pr_info("scaling_list_addr in u32 %08x\n", scaling_offset);
-*/
-
-		scaling_fd = scaling_offset & 0x3ff;
-		scaling_offset = scaling_offset >> 10;
-
-/*
-		pr_info("scaling list fd %d offset %x\n",
-			scaling_fd, scaling_offset);
-*/
-		if (scaling_fd > 0) {
-			u32 tmp = vcodec_fd_to_iova(data, reg, scaling_fd);
-
-			tmp += scaling_offset;
+		for (i = 0; i < pps_info_count; i++, base += pps_info_size) {
 			pps[base + 0] = (tmp >>  0) & 0xff;
 			pps[base + 1] = (tmp >>  8) & 0xff;
 			pps[base + 2] = (tmp >> 16) & 0xff;
@@ -1008,6 +1000,7 @@ static int vcodec_bufid_to_iova(struct vpu_subdev_data *data, const u8 *tbl,
 {
 	struct vpu_service_info *pservice = data->pservice;
 	struct vpu_task_info *task = reg->task;
+	enum FORMAT_TYPE type;
 	struct ion_handle *hdl;
 	int ret = 0;
 	struct vcodec_mem_region *mem_region;
@@ -1016,6 +1009,13 @@ static int vcodec_bufid_to_iova(struct vpu_subdev_data *data, const u8 *tbl,
 
 	if (tbl == NULL || size <= 0) {
 		dev_err(pservice->dev, "input arguments invalidate\n");
+		return -1;
+	}
+
+	if (task->get_fmt)
+		type = task->get_fmt(reg->reg);
+	else {
+		pr_err("invalid task with NULL get_fmt\n");
 		return -1;
 	}
 
@@ -1031,8 +1031,24 @@ static int vcodec_bufid_to_iova(struct vpu_subdev_data *data, const u8 *tbl,
 
 		/*
 		 * special offset scale case
+		 *
+		 * This translation is for fd + offset translation.
+		 * One register has 32bits. We need to transfer both buffer file
+		 * handle and the start address offset so we packet file handle
+		 * and offset together using below format.
+		 *
+		 *  0~9  bit for buffer file handle range 0 ~ 1023
+		 * 10~31 bit for offset range 0 ~ 4M
+		 *
+		 * But on 4K case the offset can be larger the 4M
+		 * So on H.264 4K vpu/vpu2 decoder we scale the offset by 16
+		 * But MPEG4 will use the same register for colmv and it do not
+		 * need scale.
+		 *
+		 * RKVdec do not have this issue.
 		 */
-		if (task->reg_dir_mv > 0 && task->reg_dir_mv == tbl[i])
+		if (type == FMT_H264D && task->reg_dir_mv > 0 &&
+		    task->reg_dir_mv == tbl[i])
 			offset = reg->reg[tbl[i]] >> 10 << 4;
 		else
 			offset = reg->reg[tbl[i]] >> 10;
@@ -1046,7 +1062,6 @@ static int vcodec_bufid_to_iova(struct vpu_subdev_data *data, const u8 *tbl,
 		}
 
 		if (task->reg_pps > 0 && task->reg_pps == tbl[i]) {
-			enum FORMAT_TYPE type = reg->task->get_fmt(reg->reg);
 			int pps_info_offset;
 			int pps_info_count;
 			int pps_info_size;
@@ -1055,7 +1070,7 @@ static int vcodec_bufid_to_iova(struct vpu_subdev_data *data, const u8 *tbl,
 			switch (type) {
 			case FMT_H264D: {
 				pps_info_offset = offset;
-				pps_info_count = 1;
+				pps_info_count = 256;
 				pps_info_size = 32;
 				scaling_list_addr_offset = 23;
 			} break;
@@ -1700,29 +1715,39 @@ static void try_set_reg(struct vpu_subdev_data *data)
 static int return_reg(struct vpu_subdev_data *data,
 		      struct vpu_reg *reg, u32 __user *dst)
 {
-	int ret = 0;
+	struct vpu_hw_info *hw_info = data->hw_info;
+	size_t size = reg->size;
+	u32 base;
 
 	vpu_debug_enter();
 	switch (reg->type) {
 	case VPU_ENC: {
-		if (copy_to_user(dst, &reg->reg[0], data->hw_info->enc_io_size))
-			ret = -EFAULT;
+		base = 0;
 	} break;
-	case VPU_DEC:
-	case VPU_PP:
+	case VPU_DEC: {
+		base = hw_info->base_dec_pp;
+	} break;
+	case VPU_PP: {
+		base = hw_info->base_pp;
+	} break;
 	case VPU_DEC_PP: {
-		if (copy_to_user(dst, &reg->reg[0], data->hw_info->dec_io_size))
-			ret = -EFAULT;
+		base = hw_info->base_dec_pp;
 	} break;
 	default: {
-		ret = -EFAULT;
 		vpu_err("error: copy reg to user with unknown type %d\n",
 			reg->type);
+		return -EFAULT;
 	} break;
 	}
+
+	if (copy_to_user(dst, &reg->reg[base], size)) {
+		vpu_err("error: return_reg copy_to_user failed\n");
+		return -EFAULT;
+	}
+
 	reg_deinit(data, reg);
 	vpu_debug_leave();
-	return ret;
+	return 0;
 }
 
 static long vpu_service_ioctl(struct file *filp, unsigned int cmd,

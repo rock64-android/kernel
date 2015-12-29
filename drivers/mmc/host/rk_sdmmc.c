@@ -1705,6 +1705,7 @@ static void dw_mci_do_grf_io_domain_switch(struct dw_mci *host, u32 voltage)
 			MMC_DBG_ERR_FUNC(host->mmc, "%s : unknown chip [%s]\n",
 					 __FUNCTION__, mmc_hostname(host->mmc));
 			break;
+		}
 	}
 }
 
@@ -3624,14 +3625,8 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
     
         slot->wp_gpio = dw_mci_of_get_wp_gpio(host->dev, slot->id);
 	
-        if (mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO) {
-		if (!IS_ERR(host->clk_mmc))
-			clk_disable_unprepare(host->clk_mmc);
-		if (!IS_ERR(host->hclk_mmc))
-			clk_disable_unprepare(host->hclk_mmc);
-
-	        clear_bit(DW_MMC_CARD_PRESENT, &slot->flags);
-	}
+        if (mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO)
+                clear_bit(DW_MMC_CARD_PRESENT, &slot->flags);
 
         dw_mci_init_pinctrl(host);
         ret = mmc_add_host(mmc);
@@ -3824,6 +3819,7 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 	struct device *dev = host->dev;
 	struct device_node *np = dev->of_node;
 	const struct dw_mci_drv_data *drv_data = host->drv_data;
+	const struct dw_mci_rockchip_priv_data *priv = host->priv;
 	int  ret;
 	u32 clock_frequency;
 
@@ -3906,6 +3902,12 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 		host->power_inverted = true;
 	else
 		host->power_inverted = false;
+
+	if ((priv->ctrl_type == DW_MCI_TYPE_RK322X) &&
+		!rockchip_get_cpu_version()) {
+		pdata->caps2 &= ~MMC_CAP2_HS200;
+		pdata->bus_hz = 50000000;
+	}
 
 	return pdata;
 }
@@ -4130,6 +4132,13 @@ int dw_mci_probe(struct dw_mci *host)
 	mci_writel(host, INTMASK, regs);
 
 	mci_writel(host, CTRL, SDMMC_CTRL_INT_ENABLE); /* Enable mci interrupt */
+
+	if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO) {
+		if (!IS_ERR(host->clk_mmc))
+			clk_disable_unprepare(host->clk_mmc);
+		if (!IS_ERR(host->hclk_mmc))
+			clk_disable_unprepare(host->hclk_mmc);
+	}
 	
 	dev_info(host->dev, "DW MMC controller at irq %d, "
 		 "%d bit host data width, "

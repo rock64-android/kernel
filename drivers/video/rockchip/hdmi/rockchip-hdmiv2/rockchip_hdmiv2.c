@@ -5,6 +5,7 @@
 #include <linux/interrupt.h>
 #include <linux/clk.h>
 #include <linux/of_gpio.h>
+#include <linux/rockchip/cpu.h>
 #include <linux/rockchip/grf.h>
 #include <linux/rockchip/iomap.h>
 #include <linux/mfd/syscon.h>
@@ -462,6 +463,13 @@ static int rockchip_hdmiv2_parse_dt(struct hdmi_dev *hdmi_dev)
 		pr_info("hdmi phy_table not exist\n");
 	}
 
+	of_property_read_string(np, "rockchip,vendor",
+				&(hdmi_dev->vendor_name));
+	of_property_read_string(np, "rockchip,product",
+				&(hdmi_dev->product_name));
+	if (!of_property_read_u32(np, "rockchip,deviceinfo", &val))
+		hdmi_dev->deviceinfo = val & 0xff;
+
 	#ifdef CONFIG_MFD_SYSCON
 	hdmi_dev->grf_base =
 		syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
@@ -577,6 +585,10 @@ static int rockchip_hdmiv2_probe(struct platform_device *pdev)
 				SUPPORT_YCBCR_INPUT |
 				SUPPORT_1080I |
 				SUPPORT_480I_576I;
+		if (rockchip_get_cpu_version())
+			rk_hdmi_property.feature |=
+				SUPPORT_YUV420 |
+				SUPPORT_DEEP_10BIT;
 	} else {
 		ret = -ENXIO;
 		goto failed1;
@@ -653,6 +665,31 @@ failed:
 	return ret;
 }
 
+static int rockchip_hdmiv2_suspend(struct platform_device *pdev,
+				   pm_message_t state)
+{
+	if (hdmi_dev &&
+	    hdmi_dev->grf_base &&
+	    hdmi_dev->soctype == HDMI_SOC_RK322X) {
+		regmap_write(hdmi_dev->grf_base,
+			     RK322X_GRF_SOC_CON2,
+			     RK322X_PLL_POWER_DOWN);
+	}
+	return 0;
+}
+
+static int rockchip_hdmiv2_resume(struct platform_device *pdev)
+{
+	if (hdmi_dev &&
+	    hdmi_dev->grf_base &&
+	    hdmi_dev->soctype == HDMI_SOC_RK322X) {
+		regmap_write(hdmi_dev->grf_base,
+			     RK322X_GRF_SOC_CON2,
+			     RK322X_PLL_POWER_UP);
+	}
+	return 0;
+}
+
 static int rockchip_hdmiv2_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "rk3288 hdmi driver removed.\n");
@@ -684,7 +721,9 @@ static struct platform_driver rockchip_hdmiv2_driver = {
 		.of_match_table = of_match_ptr(rk_hdmi_dt_ids),
 		#endif
 	},
-	.shutdown   = rockchip_hdmiv2_shutdown,
+	.suspend	= rockchip_hdmiv2_suspend,
+	.resume		= rockchip_hdmiv2_resume,
+	.shutdown	= rockchip_hdmiv2_shutdown,
 };
 
 static int __init rockchip_hdmiv2_init(void)

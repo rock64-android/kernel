@@ -448,6 +448,7 @@ static void vop_deint(struct vop_device *vop_dev)
 
 		vop_cfg_done(vop_dev);
 		spin_unlock(&vop_dev->reg_lock);
+		mdelay(50);
 	}
 }
 
@@ -1222,8 +1223,11 @@ static int vop_config_timing(struct rk_lcdc_driver *dev_drv)
 		vop_msk_reg(vop_dev, DSP_CTRL0,
 			    V_DSP_INTERLACE(1) | V_DSP_FIELD_POL(0));
 
-		val = V_DSP_LINE_FLAG_NUM_0(vact_end_f1) |
-			V_DSP_LINE_FLAG_NUM_1(vact_end_f1);
+		val = V_DSP_LINE_FLAG_NUM_0(lower_margin ?
+					    vact_end_f1 : vact_end_f1 - 1);
+
+		val |= V_DSP_LINE_FLAG_NUM_1(lower_margin ?
+					     vact_end_f1 : vact_end_f1 - 1);
 		vop_msk_reg(vop_dev, LINE_FLAG, val);
 	} else {
 		val = V_DSP_VS_END(vsync_len) | V_DSP_VTOTAL(v_total);
@@ -1381,14 +1385,48 @@ static int vop_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 	if (likely(vop_dev->clk_on)) {
 		switch (screen->face) {
 		case OUT_P888:
-			face = OUT_P888;
-			val = V_DITHER_DOWN_EN(0);
+			if (rockchip_get_cpu_version())
+				face = OUT_P101010;
+			else
+				face = OUT_P888;
+
+			val = V_DITHER_DOWN_EN(0) | V_DITHER_UP_EN(0)
+				| V_PRE_DITHER_DOWN_EN(1);
 			break;
 		case OUT_YUV_420:
-			/*yuv420 output prefer yuv domain overlay */
-			face = OUT_YUV_420;
-			dclk_ddr = 1;
-			val = V_DITHER_DOWN_EN(0);
+			if (rockchip_get_cpu_version()) {
+				face = OUT_YUV_420;
+				dclk_ddr = 1;
+				val = V_DITHER_DOWN_EN(0) | V_DITHER_UP_EN(0)
+					| V_PRE_DITHER_DOWN_EN(1);
+				break;
+			}
+			dev_err(vop_dev->dev,
+				"This chip can't supported screen face[%d]\n",
+				screen->face);
+			break;
+		case OUT_YUV_420_10BIT:
+			if (rockchip_get_cpu_version()) {
+				face = OUT_YUV_420;
+				dclk_ddr = 1;
+				val = V_DITHER_DOWN_EN(0) | V_DITHER_UP_EN(1)
+					| V_PRE_DITHER_DOWN_EN(0);
+				break;
+			}
+			dev_err(vop_dev->dev,
+				"This chip can't supported screen face[%d]\n",
+				screen->face);
+			break;
+		case OUT_P101010:
+			if (rockchip_get_cpu_version()) {
+				face = OUT_P101010;
+				val = V_DITHER_DOWN_EN(0) | V_DITHER_UP_EN(1)
+					| V_PRE_DITHER_DOWN_EN(0);
+				break;
+			}
+			dev_err(vop_dev->dev,
+				"This chip can't supported screen face[%d]\n",
+				screen->face);
 			break;
 		default:
 			dev_err(vop_dev->dev, "un supported screen face[%d]!\n",
@@ -2124,18 +2162,13 @@ static int dsp_y_pos(int mirror_en, struct rk_screen *screen,
 	if (screen->y_mirror && mirror_en)
 		pr_err("not support both win and global mirror\n");
 
-	if (screen->mode.vmode & FB_VMODE_INTERLACED) {
-		pos = area->ypos / 2 + screen->mode.upper_margin +
+	if ((!mirror_en) && (!screen->y_mirror))
+		pos = area->ypos + screen->mode.upper_margin +
 			screen->mode.vsync_len;
-	} else {
-		if ((!mirror_en) && (!screen->y_mirror))
-			pos = area->ypos + screen->mode.upper_margin +
-				screen->mode.vsync_len;
-		else
-			pos = screen->mode.yres - area->ypos -
-				area->ysize + screen->mode.upper_margin +
-				screen->mode.vsync_len;
-	}
+	else
+		pos = screen->mode.yres - area->ypos -
+			area->ysize + screen->mode.upper_margin +
+			screen->mode.vsync_len;
 
 	return pos;
 }
@@ -2308,7 +2341,7 @@ static int hwc_set_par(struct vop_device *vop_dev,
 		xvir = win->area[0].xvir;
 		yvir = win->area[0].yvir;
 	}
-	vop_hwc_reg_update(&vop_dev->driver, 4);
+	vop_hwc_reg_update(&vop_dev->driver, 2);
 	spin_unlock(&vop_dev->reg_lock);
 
 	DBG(1, "lcdc[%d]:hwc>>%s\n>>format:%s>>>xact:%d>>yact:%d>>xsize:%d",
