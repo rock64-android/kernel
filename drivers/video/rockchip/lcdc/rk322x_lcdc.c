@@ -1170,7 +1170,6 @@ static int __maybe_unused vop_mmu_en(struct rk_lcdc_driver *dev_drv)
 		pr_info("%s,clk_on = %d\n", __func__, vop_dev->clk_on);
 		return 0;
 	}
-#if defined(CONFIG_ROCKCHIP_IOMMU)
 	if (dev_drv->iommu_enabled) {
 		if (!vop_dev->iommu_status && dev_drv->mmu_dev) {
 			if (likely(vop_dev->clk_on)) {
@@ -1184,7 +1183,6 @@ static int __maybe_unused vop_mmu_en(struct rk_lcdc_driver *dev_drv)
 			rockchip_iovmm_activate(dev_drv->dev);
 		}
 	}
-#endif
 	return 0;
 }
 
@@ -1650,7 +1648,6 @@ static int vop_open(struct rk_lcdc_driver *dev_drv, int win_id,
 		vop_pre_init(dev_drv);
 		vop_clk_enable(vop_dev);
 		vop_enable_irq(dev_drv);
-#if defined(CONFIG_ROCKCHIP_IOMMU)
 		if (dev_drv->iommu_enabled) {
 			if (!dev_drv->mmu_dev) {
 				dev_drv->mmu_dev =
@@ -1666,7 +1663,6 @@ static int vop_open(struct rk_lcdc_driver *dev_drv, int win_id,
 				}
 			}
 		}
-#endif
 		if ((support_uboot_display() && (vop_dev->prop == PRMRY)))
 			vop_set_dclk(dev_drv, 0);
 		else
@@ -3548,14 +3544,10 @@ static int vop_parse_dt(struct vop_device *vop_dev)
 		dev_drv->bcsh.cos_hue = (val >> 8) & 0xff;
 	}
 
-#if defined(CONFIG_ROCKCHIP_IOMMU)
 	if (of_property_read_u32(np, "rockchip,iommu-enabled", &val))
 		dev_drv->iommu_enabled = 0;
 	else
 		dev_drv->iommu_enabled = val;
-#else
-	dev_drv->iommu_enabled = 0;
-#endif
 	return 0;
 }
 
