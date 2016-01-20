@@ -129,6 +129,14 @@ struct bsp_priv {
 	int reset_io_level;
 	int phyirq_io;
 	int phyirq_io_level;
+	int link_io;
+	int link_io_level;
+	int led_io;
+	int led_io_level;
+	spinlock_t led_lock; /* Protect LED state */
+	struct delayed_work led_work;
+	int led_active;
+	unsigned long led_next_time;
 	int phy_iface;
 	bool clock_input;
 	bool internal_phy;

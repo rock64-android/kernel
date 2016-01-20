@@ -979,18 +979,57 @@ static int vop_win_0_1_reg_update(struct rk_lcdc_driver *dev_drv, int win_id)
 	struct rk_lcdc_win *win = dev_drv->win[win_id];
 	u64 val;
 	uint32_t off;
+	int format;
 
 	off = win_id * 0x40;
 
 	if (win->state == 1) {
 		vop_axi_gather_cfg(vop_dev, win);
+
+		/*
+		 * rk322x have a bug on windows 0 and 1:
+		 *
+		 * When switch win format from RGB to YUV, would flash
+		 * some green lines on the top of the windows.
+		 *
+		 * Use bg_en show one blank frame to skip the error frame.
+		 */
+		if (IS_YUV(win->area[0].fmt_cfg)) {
+			val = vop_readl(vop_dev, WIN0_CTRL0);
+			format = (val & MASK(WIN0_DATA_FMT)) >> 1;
+
+			if (!IS_YUV(format)) {
+				if (dev_drv->overlay_mode == VOP_YUV_DOMAIN) {
+					val = V_WIN0_DSP_BG_RED(0x200) |
+						V_WIN0_DSP_BG_GREEN(0x40) |
+						V_WIN0_DSP_BG_BLUE(0x200) |
+						V_WIN0_BG_EN(1);
+					vop_msk_reg(vop_dev, WIN0_DSP_BG + off,
+						    val);
+				} else {
+					val = V_WIN0_DSP_BG_RED(0) |
+						V_WIN0_DSP_BG_GREEN(0) |
+						V_WIN0_DSP_BG_BLUE(0) |
+						V_WIN0_BG_EN(1);
+					vop_msk_reg(vop_dev, WIN0_DSP_BG + off,
+						    val);
+				}
+			} else {
+				val = V_WIN0_BG_EN(0);
+				vop_msk_reg(vop_dev, WIN0_DSP_BG + off, val);
+			}
+		} else {
+			val = V_WIN0_BG_EN(0);
+			vop_msk_reg(vop_dev, WIN0_DSP_BG + off, val);
+		}
+
 		val = V_WIN0_EN(win->state) |
 			V_WIN0_DATA_FMT(win->area[0].fmt_cfg) |
 			V_WIN0_FMT_10(win->fmt_10) |
 			V_WIN0_LB_MODE(win->win_lb_mode) |
 			V_WIN0_RB_SWAP(win->area[0].swap_rb) |
-			V_WIN0_X_MIR_EN(win->mirror_en) |
-			V_WIN0_Y_MIR_EN(win->mirror_en) |
+			V_WIN0_X_MIR_EN(win->xmirror) |
+			V_WIN0_Y_MIR_EN(win->ymirror) |
 			V_WIN0_UV_SWAP(win->area[0].swap_uv);
 		vop_msk_reg(vop_dev, WIN0_CTRL0 + off, val);
 		val = V_WIN0_BIC_COE_SEL(win->bic_coe_el) |
@@ -1289,7 +1328,8 @@ static void vop_bcsh_path_sel(struct rk_lcdc_driver *dev_drv)
 }
 
 static int vop_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
-			       u16 *yact, int *format, u32 *dsp_addr)
+			       u16 *yact, int *format, u32 *dsp_addr,
+			       int *ymirror)
 {
 	struct vop_device *vop_dev =
 			container_of(dev_drv, struct vop_device, driver);
@@ -1303,6 +1343,7 @@ static int vop_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
 
 	val = vop_readl(vop_dev, WIN0_CTRL0);
 	*format = (val & MASK(WIN0_DATA_FMT)) >> 1;
+	*ymirror = (val & MASK(WIN0_Y_MIR_EN)) >> 22;
 	*dsp_addr = vop_readl(vop_dev, WIN0_YRGB_MST);
 
 	spin_unlock(&vop_dev->reg_lock);
@@ -1311,14 +1352,17 @@ static int vop_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
 }
 
 static int vop_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
-			   int format, u16 xact, u16 yact, u16 xvir)
+			   int format, u16 xact, u16 yact, u16 xvir,
+			   int ymirror)
 {
 	struct vop_device *vop_dev =
 			container_of(dev_drv, struct vop_device, driver);
 	int swap = (format == RGB888) ? 1 : 0;
+	struct rk_lcdc_win *win = dev_drv->win[0];
 	u64 val;
 
-	val = V_WIN0_DATA_FMT(format) | V_WIN0_RB_SWAP(swap);
+	val = V_WIN0_DATA_FMT(format) | V_WIN0_RB_SWAP(swap) |
+		V_WIN0_Y_MIR_EN(ymirror);
 	vop_msk_reg(vop_dev, WIN0_CTRL0, val);
 
 	vop_msk_reg(vop_dev, WIN0_VIR,	V_WIN0_VIR_STRIDE(xvir));
@@ -1328,6 +1372,15 @@ static int vop_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
 	vop_writel(vop_dev, WIN0_YRGB_MST, rgb_mst);
 
 	vop_cfg_done(vop_dev);
+
+	if (format == RGB888)
+		win->area[0].format = BGR888;
+	else
+		win->area[0].format = format;
+
+	win->ymirror = ymirror;
+	win->state = 1;
+	win->last_state = 1;
 
 	return 0;
 }
@@ -1905,7 +1958,7 @@ static int vop_cal_scl_fac(struct rk_lcdc_win *win, struct rk_screen *screen)
 		break;
 	}
 
-	if (win->mirror_en == 1)
+	if (win->ymirror == 1)
 		win->yrgb_vsd_mode = SCALE_DOWN_BIL;
 	if (screen->mode.vmode & FB_VMODE_INTERLACED) {
 		/* interlace mode must bill */
@@ -2180,8 +2233,8 @@ static int win_0_1_set_par(struct vop_device *vop_dev,
 	u8 fmt_cfg = 0, swap_rb, swap_uv = 0;
 	char fmt[9] = "NULL";
 
-	xpos = dsp_x_pos(win->mirror_en, screen, &win->area[0]);
-	ypos = dsp_y_pos(win->mirror_en, screen, &win->area[0]);
+	xpos = dsp_x_pos(win->xmirror, screen, &win->area[0]);
+	ypos = dsp_y_pos(win->ymirror, screen, &win->area[0]);
 
 	spin_lock(&vop_dev->reg_lock);
 	if (likely(vop_dev->clk_on)) {
@@ -2219,6 +2272,11 @@ static int win_0_1_set_par(struct vop_device *vop_dev,
 		case XBGR888:
 		case ABGR888:
 			fmt_cfg = 0;
+			swap_rb = 1;
+			win->fmt_10 = 0;
+			break;
+		case BGR888:
+			fmt_cfg = 1;
 			swap_rb = 1;
 			win->fmt_10 = 0;
 			break;

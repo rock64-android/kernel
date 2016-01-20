@@ -67,7 +67,7 @@ static const enum FORMAT_TYPE rkv_dec_fmt_tbl[] = {
 
 static enum FORMAT_TYPE rkv_dec_get_fmt(u32 *regs)
 {
-	u32 fmt_id = (regs[2] >> 20) && 0x3;
+	u32 fmt_id = (regs[2] >> 20) & 0x3;
 	enum FORMAT_TYPE type = rkv_dec_fmt_tbl[fmt_id];
 	return type;
 }
@@ -94,7 +94,7 @@ static struct vpu_task_info task_rkv[TASK_TYPE_BUTT] = {
 		.reg_en = RKV_REG_EN_DEC,
 		.reg_irq = RKV_DEC_INTERRUPT_REGISTER,
 		.reg_len = 4,
-		.reg_dir_mv = -1,
+		.reg_dir_mv = 52,
 		.reg_pps = 42,
 		.reg_pipe = 0,
 		.enable_mask = 0,
@@ -194,8 +194,8 @@ DEF_FMT_TRANS_TBL(rkv_h265d,
 );
 
 DEF_FMT_TRANS_TBL(rkv_vp9d,
-		  4,  6,  7,  10, 11, 12, 13, 14,
-		  15, 16, 34, 41, 42, 43
+		  4,  6,  7,  11, 12, 13, 14, 15,
+		  16, 52
 );
 
 const struct vpu_trans_info trans_rkv[FMT_TYPE_BUTT] = {

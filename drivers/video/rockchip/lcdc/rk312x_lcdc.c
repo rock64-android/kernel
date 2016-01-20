@@ -1128,7 +1128,8 @@ static void rk312x_lcdc_select_bcsh(struct rk_lcdc_driver *dev_drv,
 }
 
 static int rk312x_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
-				  u16 *yact, int *format, u32 *dsp_addr)
+				  u16 *yact, int *format, u32 *dsp_addr,
+				  int *ymirror)
 {
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 						    struct lcdc_device, driver);
@@ -1151,10 +1152,12 @@ static int rk312x_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
 }
 
 static int rk312x_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
-			      int format, u16 xact, u16 yact, u16 xvir)
+			      int format, u16 xact, u16 yact, u16 xvir,
+			      int ymirror)
 {
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 						    struct lcdc_device, driver);
+	struct rk_lcdc_win *win = dev_drv->win[0];
 	u32 val, mask;
 
 	mask = m_WIN0_FORMAT;
@@ -1169,6 +1172,8 @@ static int rk312x_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
 	lcdc_writel(lcdc_dev, WIN0_YRGB_MST, rgb_mst);
 
 	lcdc_cfg_done(lcdc_dev);
+	win->state = 1;
+	win->last_state = 1;
 
 	return 0;
 }

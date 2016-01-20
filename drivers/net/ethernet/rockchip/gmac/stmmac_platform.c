@@ -349,6 +349,7 @@ static void SET_RMII_10M(struct bsp_priv *bsp_priv, int type)
 		}
 
 		if (bsp_priv->internal_phy) {
+			/* speed LED */
 			regmap_write(bsp_priv->grf, RK322X_GRF_MACPHY_CON1,
 				     GRF_CLR_BIT(8));
 		}
@@ -390,6 +391,7 @@ static void SET_RMII_100M(struct bsp_priv *bsp_priv, int type)
 		}
 
 		if (bsp_priv->internal_phy) {
+			/* speed LED */
 			regmap_write(bsp_priv->grf, RK322X_GRF_MACPHY_CON1,
 				     GRF_BIT(8));
 		}
@@ -640,6 +642,12 @@ static int phy_power_on(bool enable)
 	if (bsp_priv->internal_phy) {
 		pr_info("use internal PHY\n");
 
+		if (gpio_is_valid(bsp_priv->link_io)) {
+			/* link LED off */
+			gpio_direction_output(g_bsp_priv.link_io,
+					      !g_bsp_priv.link_io_level);
+		}
+
 		/* S29_12 set to 0 */
 		/* S29_8 & S29_9 set to 0 */
 		/* G5_7 set to 0 */
@@ -699,6 +707,7 @@ static int phy_power_on(bool enable)
 			regmap_write(bsp_priv->grf, RK322X_GRF_MACPHY_CON0,
 				     GRF_CLR_BIT(0));
 			/* G5_7 set to 1 */
+			clk_prepare_enable(bsp_priv->clk_macphy);
 			clk_disable_unprepare(bsp_priv->clk_macphy);
 		}
 	}
@@ -807,6 +816,26 @@ int stmmc_pltfr_init(struct platform_device *pdev) {
 						pr_err("%s: plat_data is NULL\n", __func__);
 				}
 			}
+		}
+	}
+
+	if (!gpio_is_valid(bsp_priv->link_io)) {
+		pr_err("%s: ERROR: Get link-gpio failed.\n", __func__);
+	} else {
+		err = gpio_request(bsp_priv->link_io, "phy_link");
+		if (err) {
+			pr_err("%s: ERROR: Request pin %s failed.\n",
+			       "phy_link", __func__);
+		}
+	}
+
+	if (!gpio_is_valid(bsp_priv->led_io)) {
+		pr_err("%s: ERROR: Get led-gpio failed.\n", __func__);
+	} else {
+		err = gpio_request(bsp_priv->led_io, "phy_led");
+		if (err) {
+			pr_err("%s: ERROR: Request pin %s failed.\n",
+			       "phy_led", __func__);
 		}
 	}
 
@@ -974,6 +1003,18 @@ static int stmmac_probe_config_dt(struct platform_device *pdev,
 	g_bsp_priv.power_io =
 			of_get_named_gpio_flags(np, "power-gpio", 0, &flags);
 	g_bsp_priv.power_io_level = (flags == GPIO_ACTIVE_HIGH) ? 1 : 0;
+	g_bsp_priv.link_io =
+			of_get_named_gpio_flags(np, "link-gpio", 0, &flags);
+	g_bsp_priv.link_io_level = (flags == GPIO_ACTIVE_HIGH) ? 1 : 0;
+	g_bsp_priv.led_io =
+			of_get_named_gpio_flags(np, "led-gpio", 0, &flags);
+	g_bsp_priv.led_io_level = (flags == GPIO_ACTIVE_HIGH) ? 1 : 0;
+
+	if ((g_bsp_priv.internal_phy) && gpio_is_valid(g_bsp_priv.link_io)) {
+		/* link LED off */
+		gpio_direction_output(g_bsp_priv.link_io,
+				      !g_bsp_priv.link_io_level);
+	}
 
 	g_bsp_priv.phy_iface = plat->interface;
 	g_bsp_priv.phy_power_on = phy_power_on;

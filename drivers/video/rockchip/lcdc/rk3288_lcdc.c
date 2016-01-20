@@ -1158,7 +1158,8 @@ static void rk3288_lcdc_bcsh_path_sel(struct rk_lcdc_driver *dev_drv)
 }
 
 static int rk3288_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
-				  u16 *yact, int *format, u32 *dsp_addr)
+				  u16 *yact, int *format, u32 *dsp_addr,
+				  int *ymirror)
 {
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 						    struct lcdc_device, driver);
@@ -1180,11 +1181,13 @@ static int rk3288_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
 }
 
 static int rk3288_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
-			      int format, u16 xact, u16 yact, u16 xvir)
+			      int format, u16 xact, u16 yact, u16 xvir,
+			      int ymirror)
 {
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 						    struct lcdc_device, driver);
 	u32 val, mask;
+	struct rk_lcdc_win *win = dev_drv->win[0];
 	int swap = (format == RGB888) ? 1 : 0;
 
 	mask = m_WIN0_DATA_FMT | m_WIN0_RB_SWAP;
@@ -1199,6 +1202,8 @@ static int rk3288_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
 	lcdc_writel(lcdc_dev, WIN0_YRGB_MST, rgb_mst);
 
 	lcdc_cfg_done(lcdc_dev);
+	win->state = 1;
+	win->last_state = 1;
 
 	return 0;
 }

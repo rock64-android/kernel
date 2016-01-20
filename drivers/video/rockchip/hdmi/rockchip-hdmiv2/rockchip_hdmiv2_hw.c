@@ -86,32 +86,32 @@ static const struct phy_mpll_config_tab PHY_MPLL_TABLE[] = {
 };
 
 static const struct ext_pll_config_tab EXT_PLL_TABLE[] = {
-	{27000000,	27000000,	8,	1,	45,	3,	1,
-		1,	1,	3,	3,	4,	0,	1,	40,
+	{27000000,	27000000,	8,	1,	90,	3,	2,
+		2,	10,	3,	3,	4,	0,	1,	40,
 		8},
-	{27000000,	33750000,	10,	1,	45,	0,	3,
-		3,	1,	3,	3,	4,	0,	1,	40,
+	{27000000,	33750000,	10,	1,	90,	1,	3,
+		3,	10,	3,	3,	4,	0,	1,	40,
 		8},
-	{59400000,	59400000,	8,	2,	99,	3,	1,
-		1,	1,	3,	2,	2,	0,	1,	40,
+	{59400000,	59400000,	8,	1,	99,	3,	2,
+		2,	1,	3,	3,	4,	0,	1,	40,
 		8},
-	{59400000,	74250000,	10,	2,	99,	1,	1,
-		1,	1,	3,	2,	2,	0,	1,	40,
+	{59400000,	74250000,	10,	1,	99,	1,	2,
+		2,	1,	3,	3,	4,	0,	1,	40,
 		8},
-	{74250000,	74250000,	8,	2,	99,	1,	1,
-		1,	1,	2,	2,	2,	0,	1,	40,
+	{74250000,	74250000,	8,	1,	99,	1,	2,
+		2,	1,	2,	3,	4,	0,	1,	40,
 		8},
 	{74250000,	92812500,	10,	4,	495,	1,	2,
 		2,	1,	3,	3,	4,	0,	2,	40,
 		4},
-	{148500000,	148500000,	8,	2,	99,	1,	0,
-		0,	1,	2,	1,	1,	0,	2,	40,
+	{148500000,	148500000,	8,	1,	99,	1,	1,
+		1,	1,	2,	2,	2,	0,	2,	40,
 		4},
 	{148500000,	185625000,	10,	4,	495,	0,	2,
 		2,	1,	3,	2,	2,	0,	4,	40,
 		2},
-	{297000000,	297000000,	8,	2,	99,	0,	0,
-		0,	1,	0,	1,	1,	0,	4,	40,
+	{297000000,	297000000,	8,	1,	99,	0,	1,
+		1,	1,	0,	2,	2,	0,	4,	40,
 		2},
 	{297000000,	371250000,	10,	4,	495,	1,	2,
 		0,	1,	3,	1,	1,	0,	8,	40,
@@ -649,14 +649,12 @@ static int ext_phy_config(struct hdmi_dev *hdmi_dev)
 				  stat | 0x20);
 	rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_TERM_CAL,
 				  (stat >> 8) & 0xff);
-	if (hdmi_dev->tmdsclk > 200000000) {
-		rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_PLL_BW, 0x00);
-		rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_PPLL_BW, 0x02);
-	} else {
-		rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_PLL_BW, 0x11);
-		rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_PPLL_BW, 0x10);
-	}
-
+	if (hdmi_dev->tmdsclk > 200000000)
+		stat = 0;
+	else
+		stat = 0x11;
+	rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_PLL_BW, stat);
+	rockchip_hdmiv2_write_phy(hdmi_dev, EXT_PHY_PPLL_BW, 0x27);
 	if (hdmi_dev->grf_base)
 		regmap_write(hdmi_dev->grf_base,
 			     RK322X_GRF_SOC_CON2,
@@ -1367,25 +1365,14 @@ static int rockchip_hdmiv2_video_csc(struct hdmi_dev *hdmi_dev,
 static int hdmi_dev_detect_hotplug(struct hdmi *hdmi)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
-	u32 value, hotplug = HDMI_HPD_REMOVED;
+	u32 value;
 
 	value = hdmi_readl(hdmi_dev, PHY_STAT0);
 	HDMIDBG("[%s] reg%x value %02x\n", __func__, PHY_STAT0, value);
 	if (value & m_PHY_HPD)
-		hotplug = HDMI_HPD_ACTIVED;
+		return HDMI_HPD_ACTIVED;
 
-	if (hdmi_dev->soctype == HDMI_SOC_RK322X &&
-	    hdmi_dev->tmdsclk &&
-	    hdmi->hotplug == hotplug &&
-	    hotplug == HDMI_HPD_ACTIVED) {
-		regmap_write(hdmi_dev->grf_base,
-			     RK322X_GRF_SOC_CON2,
-			     RK322X_PLL_PDATA_DEN);
-		regmap_write(hdmi_dev->grf_base,
-			     RK322X_GRF_SOC_CON2,
-			     RK322X_PLL_PDATA_EN);
-	}
-	return hotplug;
+	return HDMI_HPD_REMOVED;
 }
 
 static int hdmi_dev_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)

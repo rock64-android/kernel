@@ -930,7 +930,8 @@ static int rk3368_fbdc_reg_update(struct rk_lcdc_driver *dev_drv, int win_id)
 	val = v_IFBDC_CTRL_FBDC_EN(win->area[0].fbdc_en) |
 	    v_IFBDC_CTRL_FBDC_COR_EN(win->area[0].fbdc_cor_en) |
 	    v_IFBDC_CTRL_FBDC_WIN_SEL(win->id) |
-	    v_IFBDC_CTRL_FBDC_ROTATION_MODE(win->mirror_en << 1) |
+	    v_IFBDC_CTRL_FBDC_ROTATION_MODE((win->xmirror &&
+					     win->ymirror) << 1) |
 	    v_IFBDC_CTRL_FBDC_FMT(win->area[0].fbdc_fmt_cfg) |
 	    v_IFBDC_CTRL_WIDTH_RATIO(win->area[0].fbdc_dsp_width_ratio);
 	lcdc_msk_reg(lcdc_dev, IFBDC_CTRL, mask, val);
@@ -1054,7 +1055,7 @@ static int rk3368_init_fbdc_config(struct rk_lcdc_driver *dev_drv, int win_id)
 	   break;
 	   }
 	 */
-	if ((win->mirror_en) && ((win_id == 2) || (win_id == 3))) {
+	if (win->xmirror && win->ymirror && ((win_id == 2) || (win_id == 3))) {
 		fbdc_cmp_index_init =
 		    ((fbdc_mb_yst + (fbdc_mb_height - 1)) * fbdc_mb_vir_width) +
 		    (fbdc_mb_xst + (fbdc_mb_width - 1));
@@ -1193,8 +1194,8 @@ static int rk3368_win_0_1_reg_update(struct rk_lcdc_driver *dev_drv, int win_id)
 			v_WIN0_FMT_10(win->fmt_10) |
 			v_WIN0_LB_MODE(win->win_lb_mode) |
 			v_WIN0_RB_SWAP(win->area[0].swap_rb) |
-			v_WIN0_X_MIRROR(win->mirror_en) |
-			v_WIN0_Y_MIRROR(win->mirror_en) |
+			v_WIN0_X_MIRROR(win->xmirror) |
+			v_WIN0_Y_MIRROR(win->ymirror) |
 			v_WIN0_CSC_MODE(win->csc_mode) |
 			v_WIN0_UV_SWAP(win->area[0].swap_uv);
 		lcdc_msk_reg(lcdc_dev, WIN0_CTRL0 + off, mask, val);
@@ -1787,7 +1788,8 @@ static void rk3368_lcdc_bcsh_path_sel(struct rk_lcdc_driver *dev_drv)
 }
 
 static int rk3368_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
-				  u16 *yact, int *format, u32 *dsp_addr)
+				  u16 *yact, int *format, u32 *dsp_addr,
+				  int *ymirror)
 {
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 						    struct lcdc_device, driver);
@@ -1801,6 +1803,7 @@ static int rk3368_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
 
 	val = lcdc_readl(lcdc_dev, WIN0_CTRL0);
 	*format = (val & m_WIN0_DATA_FMT) >> 1;
+	*ymirror = (val & m_WIN0_Y_MIRROR) >> 22;
 	*dsp_addr = lcdc_readl(lcdc_dev, WIN0_YRGB_MST);
 
 	spin_unlock(&lcdc_dev->reg_lock);
@@ -1809,15 +1812,18 @@ static int rk3368_get_dspbuf_info(struct rk_lcdc_driver *dev_drv, u16 *xact,
 }
 
 static int rk3368_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
-			      int format, u16 xact, u16 yact, u16 xvir)
+			      int format, u16 xact, u16 yact, u16 xvir,
+			      int ymirror)
 {
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 						    struct lcdc_device, driver);
 	u32 val, mask;
+	struct rk_lcdc_win *win = dev_drv->win[0];
 	int swap = (format == RGB888) ? 1 : 0;
 
-	mask = m_WIN0_DATA_FMT | m_WIN0_RB_SWAP;
-	val = v_WIN0_DATA_FMT(format) | v_WIN0_RB_SWAP(swap);
+	mask = m_WIN0_DATA_FMT | m_WIN0_RB_SWAP | m_WIN0_Y_MIRROR;
+	val = v_WIN0_DATA_FMT(format) | v_WIN0_RB_SWAP(swap) |
+		v_WIN0_Y_MIRROR(ymirror);
 	lcdc_msk_reg(lcdc_dev, WIN0_CTRL0, mask, val);
 
 	lcdc_msk_reg(lcdc_dev, WIN0_VIR, m_WIN0_VIR_STRIDE,
@@ -1828,6 +1834,14 @@ static int rk3368_post_dspbuf(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
 	lcdc_writel(lcdc_dev, WIN0_YRGB_MST, rgb_mst);
 
 	lcdc_cfg_done(lcdc_dev);
+	if (format == RGB888)
+		win->area[0].format = BGR888;
+	else
+		win->area[0].format = format;
+
+	win->ymirror = ymirror;
+	win->state = 1;
+	win->last_state = 1;
 
 	return 0;
 }
@@ -2615,7 +2629,7 @@ static int rk3368_lcdc_cal_scl_fac(struct rk_lcdc_win *win,
 			__func__, win->win_lb_mode);
 		break;
 	}
-	if (win->mirror_en == 1)
+	if (win->ymirror == 1)
 		win->yrgb_vsd_mode = SCALE_DOWN_BIL;
 
 	if (screen->mode.vmode & FB_VMODE_INTERLACED) {
@@ -2899,8 +2913,8 @@ static int win_0_1_set_par(struct lcdc_device *lcdc_dev,
 	u8 fmt_cfg = 0, swap_rb, swap_uv = 0;
 	char fmt[9] = "NULL";
 
-	xpos = dsp_x_pos(win->mirror_en, screen, &win->area[0]);
-	ypos = dsp_y_pos(win->mirror_en, screen, &win->area[0]);
+	xpos = dsp_x_pos(win->xmirror, screen, &win->area[0]);
+	ypos = dsp_y_pos(win->ymirror, screen, &win->area[0]);
 
 	spin_lock(&lcdc_dev->reg_lock);
 	if (likely(lcdc_dev->clk_on)) {
@@ -2938,6 +2952,11 @@ static int win_0_1_set_par(struct lcdc_device *lcdc_dev,
 		case XBGR888:
 		case ABGR888:
 			fmt_cfg = 0;
+			swap_rb = 1;
+			win->fmt_10 = 0;
+			break;
+		case BGR888:
+			fmt_cfg = 1;
 			swap_rb = 1;
 			win->fmt_10 = 0;
 			break;
@@ -3024,7 +3043,7 @@ static int win_2_3_set_par(struct lcdc_device *lcdc_dev,
 	u8 fmt_cfg, swap_rb;
 	char fmt[9] = "NULL";
 
-	if (win->mirror_en)
+	if (win->ymirror)
 		pr_err("win[%d] not support y mirror\n", win->id);
 	spin_lock(&lcdc_dev->reg_lock);
 	if (likely(lcdc_dev->clk_on)) {
@@ -3074,10 +3093,10 @@ static int win_2_3_set_par(struct lcdc_device *lcdc_dev,
 			win->area[i].fmt_cfg = fmt_cfg;
 			win->area[i].swap_rb = swap_rb;
 			win->area[i].dsp_stx =
-					dsp_x_pos(win->mirror_en, screen,
+					dsp_x_pos(win->xmirror, screen,
 						  &win->area[i]);
 			win->area[i].dsp_sty =
-					dsp_y_pos(win->mirror_en, screen,
+					dsp_y_pos(win->ymirror, screen,
 						  &win->area[i]);
 			if (((win->area[i].xact != win->area[i].xsize) ||
 			     (win->area[i].yact != win->area[i].ysize)) &&

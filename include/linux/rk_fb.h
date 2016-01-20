@@ -213,12 +213,17 @@ enum {
 
 //display data format
 enum data_format {
-	ARGB888,
-	RGB888,
-	RGB565,
+	/*
+	 * Note: ARGB888, RGB888 RGB565 may direct config to hardware
+	 * register, keep its value, don't change it.
+	 */
+	ARGB888 = 0,
+	RGB888 = 1,
+	RGB565 = 2,
 	XRGB888,
 	XBGR888,
 	ABGR888,
+	BGR888,
 	FBDC_RGB_565,
 	FBDC_ARGB_888,
 	FBDC_RGBX_888,
@@ -422,9 +427,10 @@ struct rk_lcdc_win {
 	u8 alpha_en;
 	u8 alpha_mode;
 	u16 g_alpha_val;
-	u8  mirror_en;
 	u32 color_key_val;
 	u8 csc_mode;
+	u8 xmirror;
+	u8 ymirror;
 
 	struct rk_lcdc_win_area area[RK_WIN_MAX_AREA];
 	struct rk_lcdc_post_cfg post_cfg;
@@ -458,9 +464,10 @@ struct rk_lcdc_drv_ops {
 	int (*load_screen) (struct rk_lcdc_driver *dev_drv, bool initscreen);
 	int (*get_dspbuf_info) (struct rk_lcdc_driver *dev_drv,
 				u16 *xact, u16 *yact, int *format,
-				u32 *dsp_addr);
+				u32 *dsp_addr, int *ymirror);
 	int (*post_dspbuf)(struct rk_lcdc_driver *dev_drv, u32 rgb_mst,
-			   int format, u16 xact, u16 yact, u16 xvir);
+			   int format, u16 xact, u16 yact, u16 xvir,
+			   int ymirror);
 
 	int (*get_win_state) (struct rk_lcdc_driver *dev_drv, int layer_id, int area_id);
 	int (*ovl_mgr) (struct rk_lcdc_driver *dev_drv, int swap, bool set);	/*overlay manager*/
