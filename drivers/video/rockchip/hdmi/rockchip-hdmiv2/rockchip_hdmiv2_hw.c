@@ -2000,6 +2000,8 @@ static int hdmi_dev_remove(struct hdmi *hdmi)
 	if (hdmi->ops->hdcp_power_off_cb)
 		hdmi->ops->hdcp_power_off_cb(hdmi);
 	rockchip_hdmiv2_powerdown(hdmi_dev);
+	if (gpio_is_valid(hdmi_dev->io_pullup))
+		gpio_set_value(hdmi_dev->io_pullup, 0);
 	hdmi_dev->tmdsclk = 0;
 	return HDMI_ERROR_SUCESS;
 }
