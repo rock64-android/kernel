@@ -434,8 +434,6 @@ static void rockchip_hdmiv2_powerdown(struct hdmi_dev *hdmi_dev)
 		regmap_write(hdmi_dev->grf_base,
 			     RK322X_GRF_SOC_CON2,
 			     RK322X_PLL_PDATA_DEN);
-		if (gpio_is_valid(hdmi_dev->io_pullup))
-			gpio_set_value(hdmi_dev->io_pullup, 0);
 	}
 	hdmi_writel(hdmi_dev, MC_CLKDIS, 0x7f);
 }
