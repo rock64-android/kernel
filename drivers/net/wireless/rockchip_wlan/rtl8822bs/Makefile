@@ -799,8 +799,8 @@ endif
 
 ########### HAL_RTL8822B #################################
 ifeq ($(CONFIG_RTL8822B), y)
-#include $(TopDIR)/rtl8822b.mk
-include $(shell pwd)/drivers/net/wireless/rockchip_wlan/rtl8822bs/rtl8822b.mk
+include $(TopDIR)/drivers/net/wireless/rockchip_wlan/rtl8822bs/rtl8822b.mk
+#include $(shell pwd)/drivers/net/wireless/rockchip_wlan/rtl8822bs/rtl8822b.mk
 endif
 
 ########### HAL_RTL8821C #################################

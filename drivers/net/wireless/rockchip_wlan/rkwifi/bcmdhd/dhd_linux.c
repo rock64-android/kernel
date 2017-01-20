@@ -5192,7 +5192,14 @@ int dhd_get_fw_mode(dhd_info_t *dhdinfo)
 	return DHD_FLAG_STA_MODE;
 }
 
-extern int rkwifi_set_firmware(char *fw, char *nvram);
+#define ANDROID_FW_PATH "/system/etc/firmware/"
+
+int rkwifi_set_firmware(char *fw, char *nvram)
+{
+	sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_bcm4339a0_ag.bin");
+	sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_AP6335.txt");
+	return 0;
+}
 
 bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 {
@@ -7751,8 +7758,8 @@ late_initcall(rockchip_wifi_init_module_rkwifi);
 module_exit(rockchip_wifi_exit_module_rkwifi);
 #else
 
-EXPORT_SYMBOL(rockchip_wifi_init_module_rkwifi);
-EXPORT_SYMBOL(rockchip_wifi_exit_module_rkwifi);
+module_init(rockchip_wifi_init_module_rkwifi);
+module_exit(rockchip_wifi_exit_module_rkwifi);
 #endif
 //#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 //#if defined(CONFIG_DEFERRED_INITCALLS)
