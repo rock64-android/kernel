@@ -375,6 +375,7 @@ static _mali_osk_errcode_t mali_power_domain_control(bool bpower_off)
 			drv_data->power_state = true;
 		}
 	} else {
+		/*
 		if (drv_data->power_state) {
 			D("to DISABLE clk to gpu_dvfs_node.");
 			dvfs_clk_disable_unprepare(drv_data->clk);
@@ -386,6 +387,7 @@ static _mali_osk_errcode_t mali_power_domain_control(bool bpower_off)
 
 			drv_data->power_state = false;
 		}
+		*/
 	}
 
 	return 0;
