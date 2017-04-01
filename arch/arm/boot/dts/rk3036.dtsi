@@ -264,6 +264,9 @@
 			<&clk_mac_ref_div 25000000>;
 	/*	rockchip,clocks-uboot-has-init =
 			<&aclk_vio1>;*/
+		rockchip,clocks-uboot-has-init =
+			<&clk_uart_pll>;
+		rockchip,set_div_for_pll_init;
 	};
 
 	clocks-enable {
@@ -390,6 +393,15 @@
 		//pinctrl-1 = <&i2s_gpio>;
 	};
 
+	sfc: sfc@10208000 {
+		compatible = "rockchip,sfc";
+		reg = <0x10208000 0x200>;
+		interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_sfc>, <&clk_gates3 14>;
+		clock-names = "clk_sfc", "hclk_sfc";
+		status = "disabled";
+	};
+
 	codec: codec@20030000 {
 		compatible = "rk3036-codec";
 		reg = <0x20030000 0x1000>;
@@ -488,6 +500,8 @@
 		num-slots = <1>;
 		fifo-depth = <0x100>;
 		bus-width = <8>;
+		resets = <&reset RK3036_RST_EMMC>;
+		reset-names = "mmc_ahb_reset";
 	};
 
 
@@ -509,6 +523,8 @@
 		num-slots = <1>;
 		fifo-depth = <0x100>;
 		bus-width = <4>;
+		resets = <&reset RK3036_RST_MMC0>;
+		reset-names = "mmc_ahb_reset";
 	};
 
 	sdio: rksdmmc@10218000 {
@@ -527,6 +543,8 @@
 		num-slots = <1>;
 		fifo-depth = <0x100>;
 		bus-width = <4>;
+		resets = <&reset RK3036_RST_SDIO>;
+		reset-names = "mmc_ahb_reset";
 	};
 	gpu {
 		compatible = "arm,mali400";

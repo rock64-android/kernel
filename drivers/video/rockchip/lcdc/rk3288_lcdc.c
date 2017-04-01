@@ -630,7 +630,7 @@ static int rk3288_lcdc_alpha_cfg(struct rk_lcdc_driver *dev_drv,int win_id)
 	u32 src_alpha_ctl,dst_alpha_ctl;
 	ppixel_alpha = ((win->area[0].format == ARGB888) ||
 			(win->area[0].format == ABGR888)) ? 1 : 0;
-	global_alpha = (win->g_alpha_val == 0) ? 0 : 1; 
+	global_alpha = ((win->g_alpha_val == 0) || (win->g_alpha_val == 0xff)) ? 0 : 1;
 	alpha_config.src_global_alpha_val = win->g_alpha_val;
 	win->alpha_mode = AB_SRC_OVER;
 	/*printk("%s,alpha_mode=%d,alpha_en=%d,ppixel_a=%d,gla_a=%d\n",
@@ -716,7 +716,7 @@ static int rk3288_lcdc_alpha_cfg(struct rk_lcdc_driver *dev_drv,int win_id)
 		dev_warn(lcdc_dev->dev,"alpha_en should be 0\n");
 	}
 	alpha_config.src_alpha_mode = AA_STRAIGHT;
-	alpha_config.src_alpha_cal_m0 = AA_NO_SAT;
+	alpha_config.src_alpha_cal_m0 = AA_SAT;
 
 	switch(win_id){
 	case 0:
@@ -4001,6 +4001,9 @@ static irqreturn_t rk3288_lcdc_isr(int irq, void *dev_id)
 			complete(&(lcdc_dev->driver.frame_done));
 			spin_unlock(&(lcdc_dev->driver.cpl_lock));
 		}
+#ifdef CONFIG_DRM_ROCKCHIP
+		lcdc_dev->driver.irq_call_back(&lcdc_dev->driver);
+#endif
 		lcdc_dev->driver.vsync_info.timestamp = timestamp;
 		wake_up_interruptible_all(&lcdc_dev->driver.vsync_info.wait);
 

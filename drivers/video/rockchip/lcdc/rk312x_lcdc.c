@@ -90,6 +90,9 @@ static irqreturn_t rk312x_lcdc_isr(int irq, void *dev_id)
 			complete(&(lcdc_dev->driver.frame_done));
 			spin_unlock(&(lcdc_dev->driver.cpl_lock));
 		}
+#ifdef CONFIG_DRM_ROCKCHIP
+		lcdc_dev->driver.irq_call_back(&lcdc_dev->driver);
+#endif
 		lcdc_dev->driver.vsync_info.timestamp = timestamp;
 		wake_up_interruptible_all(&lcdc_dev->driver.vsync_info.wait);
 	}
@@ -1277,6 +1280,7 @@ static int rk312x_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 			else {
 				dev_err(lcdc_dev->dev,
 					"unsupported video timing!\n");
+				spin_unlock(&lcdc_dev->reg_lock);
 				return -1;
 			}
 			if (lcdc_dev->soc_type == VOP_RK312X) {

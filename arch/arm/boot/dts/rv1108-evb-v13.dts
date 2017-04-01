@@ -98,7 +98,7 @@
 		ion_cma: rockchip,ion-heap@4 { /* CMA HEAP */
 			compatible = "rockchip,ion-heap";
 			rockchip,ion_heap = <4>;
-			reg = <0x00000000 0x04000000>; /* 64MB */
+			reg = <0x00000000 0x04400000>; /* 68MB */
 		};
 		rockchip,ion-heap@0 { /* VMALLOC HEAP */
 			compatible = "rockchip,ion-heap";
@@ -198,6 +198,10 @@
 		600000 975000
 		816000 1025000
 		1008000 1150000
+		>;
+	lkg_adjust_volt_table = <
+		/*lkg(mA)  volt(uV)*/
+		60         25000
 		>;
 	status = "okay";
 };
@@ -372,7 +376,7 @@
 };
 
 &cif_isp0 {
-	rockchip,camera-modules-attached = <&camera0 &camera1 &camera2>;
+	rockchip,camera-modules-attached = <&camera0 &camera1 &camera2 &camera3>;
 	status = "okay";
 };
 
@@ -422,7 +426,6 @@
 	ignore-pm-notify;
 	keep-power-in-suspend;
 	power-inverted;
-	pwr-gpios = <&gpio3 GPIO_B7 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
@@ -438,6 +441,10 @@
 };
 
 &sfc {
+	status = "okay";
+};
+
+&nandc {
 	status = "okay";
 };
 

@@ -142,7 +142,7 @@ struct mpp_dev_rkvenc_reg {
 	u32 unused_1c8[2];
 	u32 osd_pos[8];
 	u32 osd_addr[8];
-	u32 unused_210[11];
+	u32 unused_210[9];
 };
 
 struct rockchip_rkvenc_dev {
@@ -155,6 +155,7 @@ struct rockchip_rkvenc_dev {
 	struct ion_handle *war_hdl;
 	struct mpp_dev_rkvenc_reg *war_reg;
 	struct rkvenc_ctx *dummy_ctx;
+	atomic_t dummy_ctx_in_used;
 
 	struct clk *aclk;
 	struct clk *hclk;

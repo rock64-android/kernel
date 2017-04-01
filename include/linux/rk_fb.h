@@ -119,8 +119,10 @@ enum {
 #define BT601F(x)	((CSC_BT601F << CSC_SHIFT) | ((x) & ~CSC_MASK))
 
 enum {
-	SDR_DATA,
-	HDR_DATA,
+	SDR_DATA = 0,
+	HDR10_DATA,
+	HLG_HDR_DATA,
+	DOLBY_HDR_DATA,
 };
 
 /**
@@ -382,6 +384,7 @@ struct pwr_ctr {
 	const char *rgl_name;
 	int volt;
 	int delay;
+	int ldo_reverse;
 };
 
 struct rk_disp_pwr_ctr_list {
@@ -781,6 +784,9 @@ struct rk_lcdc_driver {
 	struct list_head pwrlist_head;
 	struct rk_lcdc_drv_ops *ops;
 	struct rk_fb_trsm_ops *trsm_ops;
+#ifdef CONFIG_DRM_ROCKCHIP
+	void (*irq_call_back)(struct rk_lcdc_driver *driver);
+#endif
 	struct overscan overscan;
 	struct rk_lcdc_bcsh bcsh;
 	int *hwc_lut;

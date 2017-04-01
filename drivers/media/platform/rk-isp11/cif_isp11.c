@@ -241,7 +241,7 @@ static struct cif_isp11_fmt cif_isp11_output_format[] = {
 	.rotation = false,
 	.overlay = false,
 },
-/* ************* YUV400 ************* */
+/* ************* YUV400/Y8 ************* */
 {
 	.name		= "YVU400-Grey-Planar",
 	.fourcc	= V4L2_PIX_FMT_GREY,
@@ -282,6 +282,15 @@ static struct cif_isp11_fmt cif_isp11_output_format[] = {
 	.fourcc = V4L2_PIX_FMT_RGB565,
 	.flags  = 0,
 	.depth  = 16,
+	.rotation = false,
+	.overlay = false,
+},
+/* ************ Y10*********** */
+{
+	.name		= "Y10",
+	.fourcc = V4L2_PIX_FMT_Y10,
+	.flags	= 0,
+	.depth	= 10,
 	.rotation = false,
 	.overlay = false,
 },
@@ -674,6 +683,8 @@ static const char *cif_isp11_pix_fmt_string(int pixfmt)
 		return "DATA";
 	case CIF_JPEG:
 		return "JPEG";
+	case CIF_Y10:
+		return "Y10";
 	case CIF_Y12:
 		return "Y12";
 	case CIF_Y12_420SP:
@@ -3441,12 +3452,8 @@ static int cif_isp11_config_cif(
 		cif_isp11_pltfrm_pr_dbg(dev->dev,
 			"CIF_ID 0x%08x\n", cif_id);
 
-		/*
-		*  Cancel isp reset internal here temporary for
-		*isp bus may be dead when switch isp.
-		*/
-		/*cif_iowrite32(CIF_IRCL_CIF_SW_RST,
-			dev->config.base_addr + CIF_IRCL);*/
+		cif_iowrite32(CIF_IRCL_CIF_SW_RST,
+			dev->config.base_addr + CIF_IRCL);
 
 		cif_isp11_config_clk(dev);
 

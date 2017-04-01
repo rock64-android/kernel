@@ -351,7 +351,9 @@
 		pinctrl-names = "rockchip,camera_default", "rockchip,camera_sleep";
 		pinctrl-0 = <&cif_dvp_d0d1 &cif_dvp_d2d9 &cif_dvp_d10d11
 			&cif_dvp_clk_in &cif_dvp_clk_out &cif_dvp_sync>;
-		pinctrl-1 = <&cif_dvp_sleep>;
+		pinctrl-1 = <&cif_dvp_d0d1_sleep &cif_dvp_d2d9_sleep
+			&cif_dvp_d10d11_sleep &cif_dvp_clk_in_sleep
+			&cif_dvp_clk_out_sleep &cif_dvp_sync_sleep>;
 		rockchip,pd-gpio = <&gpio3 25 GPIO_ACTIVE_LOW>;
 		rockchip,pwr-gpio = <&gpio3 24 GPIO_ACTIVE_HIGH>;
 		rockchip,rst-gpio = <&gpio3 8 GPIO_ACTIVE_LOW>;
@@ -435,7 +437,7 @@
 			regulator-name= "vdd_core";
 			regulator-min-microvolt = <700000>;
 			regulator-max-microvolt = <1500000>;
-			regulator-initial-mode = <0x2>;
+			regulator-initial-mode = <0x1>;
 			regulator-initial-state = <3>;
 			regulator-boot-on;
 			regulator-always-on;
@@ -461,7 +463,7 @@
 			regulator-name= "vcc_ddr";
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
-			regulator-initial-mode = <0x2>;
+			regulator-initial-mode = <0x1>;
 			regulator-initial-state = <3>;
 			regulator-boot-on;
 			regulator-always-on;
@@ -476,7 +478,7 @@
 			regulator-name= "vcc_io";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
-			regulator-initial-mode = <0x2>;
+			regulator-initial-mode = <0x1>;
 			regulator-initial-state = <3>;
 			regulator-boot-on;
 			regulator-always-on;

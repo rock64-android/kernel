@@ -268,6 +268,27 @@ static void mpp_power_off_work(struct work_struct *work_s)
 	}
 }
 
+static void mpp_dev_reset(struct rockchip_mpp_dev *mpp)
+{
+	mpp_debug_enter();
+
+	atomic_set(&mpp->reset_request, 0);
+
+	mpp->variant->reset(mpp);
+
+#ifdef CONFIG_ROCKCHIP_IOMMU
+	if (mpp->iommu_enable && test_bit(MMU_ACTIVATED, &mpp->state)) {
+		if (atomic_read(&mpp->enabled))
+			rockchip_iovmm_deactivate(mpp->dev);
+		else
+			WARN_ON(!atomic_read(&mpp->enabled));
+
+		rockchip_iovmm_activate(mpp->dev);
+	}
+#endif
+	mpp_debug_leave();
+}
+
 void mpp_dev_power_on(struct rockchip_mpp_dev *mpp)
 {
 	int ret;
@@ -286,8 +307,10 @@ void mpp_dev_power_on(struct rockchip_mpp_dev *mpp)
 
 	mpp->variant->power_on(mpp);
 #ifdef CONFIG_ROCKCHIP_IOMMU
-	if (mpp->iommu_enable)
+	if (mpp->iommu_enable) {
+		set_bit(MMU_ACTIVATED, &mpp->state);
 		rockchip_iovmm_activate(mpp->dev);
+	}
 #endif
 	atomic_add(1, &mpp->power_on_cnt);
 	wake_lock(&mpp->wake_lock);
@@ -311,8 +334,10 @@ void mpp_dev_power_off(struct rockchip_mpp_dev *mpp)
 	pr_info("%s: power off...", dev_name(mpp->dev));
 
 #ifdef CONFIG_ROCKCHIP_IOMMU
-	if (mpp->iommu_enable)
+	if (mpp->iommu_enable) {
+		clear_bit(MMU_ACTIVATED, &mpp->state);
 		rockchip_iovmm_deactivate(mpp->dev);
+	}
 #endif
 	mpp->variant->power_off(mpp);
 
@@ -334,16 +359,19 @@ static void rockchip_mpp_run(struct rockchip_mpp_dev *mpp)
 
 	mpp_srv_run(mpp->srv);
 
-	ctx = mpp_srv_get_current_ctx(mpp->srv);
+	ctx = mpp_srv_get_last_running_ctx(mpp->srv);
 	mpp_time_record(ctx);
 
-	mpp_dev_power_on(ctx->mpp);
+	mpp_dev_power_on(mpp);
 #ifdef CONFIG_ROCKCHIP_IOMMU
 	if (mpp->iommu_enable)
 		rockchip_iovmm_invalidate_tlb(mpp->dev);
 #endif
 	mpp_debug(DEBUG_TASK_INFO, "pid %d, start hw %s\n",
-		  ctx->session->pid, dev_name(ctx->mpp->dev));
+		  ctx->session->pid, dev_name(mpp->dev));
+
+	if (atomic_read(&mpp->reset_request))
+		mpp_dev_reset(mpp);
 
 	if (unlikely(mpp_dev_debug & DEBUG_REGISTER))
 		mpp_dump_reg(mpp->reg_base, mpp->variant->reg_len);
@@ -358,15 +386,26 @@ static void rockchip_mpp_run(struct rockchip_mpp_dev *mpp)
 static void rockchip_mpp_try_run(struct rockchip_mpp_dev *mpp)
 {
 	int ret = 0;
+	struct rockchip_mpp_dev *pending;
+	struct mpp_ctx *ctx;
 
 	mpp_debug_enter();
 
 	if (!mpp_srv_pending_is_empty(mpp->srv)) {
+		/*
+		 * if prepare func in hw driver define, state will be determined
+		 * by hw driver prepare func, or state will be determined by
+		 * service. ret = 0, run ready ctx.
+		 */
+		ctx = mpp_srv_get_pending_ctx(mpp->srv);
+		pending = ctx->mpp;
 		if (mpp->ops->prepare)
-			ret = mpp->ops->prepare(mpp);
+			ret = mpp->ops->prepare(pending);
+		else if (mpp_srv_is_running(mpp->srv))
+			ret = -1;
 
-		if (ret == 0 && !mpp_srv_is_running(mpp->srv))
-			rockchip_mpp_run(mpp);
+		if (ret == 0)
+			rockchip_mpp_run(pending);
 	}
 
 	mpp_debug_leave();
@@ -411,6 +450,8 @@ static int mpp_dev_wait_result(struct mpp_session *session,
 				session->pid,
 				atomic_read(&session->task_running));
 			ret = -ETIMEDOUT;
+
+			mpp_dump_reg(mpp->reg_base, mpp->variant->reg_len);
 		}
 	}
 
@@ -511,8 +552,7 @@ static long compat_mpp_dev_ioctl(struct file *filp, unsigned int cmd,
 	struct mpp_session *session = (struct mpp_session *)filp->private_data;
 
 	mpp_debug_enter();
-	mpp_debug(3, "cmd %x, MPP_IOC_SET_CLIENT_TYPE %x\n", cmd,
-		  (u32)MPP_IOC_SET_CLIENT_TYPE);
+
 	if (NULL == session)
 		return -EINVAL;
 
@@ -839,6 +879,8 @@ static int mpp_dev_probe(struct platform_device *pdev)
 	atomic_set(&mpp->power_on_cnt, 0);
 	atomic_set(&mpp->power_off_cnt, 0);
 	atomic_set(&mpp->total_running, 0);
+	atomic_set(&mpp->reset_request, 0);
+
 	INIT_DELAYED_WORK(&mpp->power_off_work, mpp_power_off_work);
 	mpp->last.tv64 = 0;
 
@@ -877,10 +919,6 @@ static int mpp_dev_probe(struct platform_device *pdev)
 		dev_info(dev, "No interrupt resource found\n");
 	}
 
-	ret = mpp->variant->hw_probe(mpp);
-	if (ret)
-		goto err;
-
 #ifdef CONFIG_ROCKCHIP_IOMMU
 	dev_info(dev, "try to get iommu dev %s\n",
 		 mpp->variant->mmu_dev_dts_name);
@@ -896,6 +934,9 @@ static int mpp_dev_probe(struct platform_device *pdev)
 		mpp->iommu_enable = false;
 	}
 #endif
+	ret = mpp->variant->hw_probe(mpp);
+	if (ret)
+		goto err;
 
 	dev_info(dev, "resource ready, register device\n");
 	/* create device node */

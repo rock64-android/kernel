@@ -803,7 +803,7 @@ static int vop_alpha_cfg(struct rk_lcdc_driver *dev_drv, int win_id)
 				 (win->area[i].format == ABGR888)) ? 1 : 0;
 	}
 
-	global_alpha = (win->g_alpha_val == 0) ? 0 : 1;
+	global_alpha = ((win->g_alpha_val == 0) || (win->g_alpha_val == 0xff)) ? 0 : 1;
 
 	for (i = 0; i < dev_drv->lcdc_win_num; i++) {
 		if (!dev_drv->win[i]->state)
@@ -900,7 +900,7 @@ static int vop_alpha_cfg(struct rk_lcdc_driver *dev_drv, int win_id)
 	else
 		alpha_en = 0;
 	alpha_config.src_alpha_mode = AA_STRAIGHT;
-	alpha_config.src_alpha_cal_m0 = AA_NO_SAT;
+	alpha_config.src_alpha_cal_m0 = AA_SAT;
 
 	switch (win_id) {
 	case 0:
@@ -1784,14 +1784,7 @@ static int vop_cal_scl_fac(struct rk_lcdc_win *win, struct rk_screen *screen)
 	u8 yuv_fmt = 0;
 
 	srcW = win->area[0].xact;
-	if ((screen->mode.vmode & FB_VMODE_INTERLACED) &&
-	    (win->area[0].yact == 2 * win->area[0].ysize)) {
-		srcH = win->area[0].yact / 2;
-		yrgb_vsd_bil_gt2 = 1;
-		cbcr_vsd_bil_gt2 = 1;
-	} else {
-		srcH = win->area[0].yact;
-	}
+	srcH = win->area[0].yact;
 	dstW = win->area[0].xsize;
 	dstH = win->area[0].ysize;
 

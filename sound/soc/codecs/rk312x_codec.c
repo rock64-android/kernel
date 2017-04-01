@@ -801,6 +801,20 @@ static const SOC_ENUM_SINGLE_DECL(rk312x_voice_call_path_type, 0, 0,
 /* static int rk312x_codec_power_up(int type); */
 static int rk312x_codec_power_down(int type);
 
+int rk312x_codec_mute_dac(int mute)
+{
+	if (!rk312x_priv) {
+		DBG("%s : rk312x_priv is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (mute) {
+		snd_soc_write(rk312x_priv->codec, 0xb4, 0x40);
+		snd_soc_write(rk312x_priv->codec, 0xb8, 0x40);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(rk312x_codec_mute_dac);
+
 static int rk312x_playback_path_get(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -1712,10 +1726,20 @@ static int rk312x_digital_mute(struct snd_soc_dai *dai, int mute)
 			switch (rk312x_priv->playback_path) {
 			case SPK_PATH:
 			case RING_SPK:
+				rk312x_codec_ctl_gpio(CODEC_SET_SPK,
+						      rk312x_priv->spk_active_level);
+				rk312x_codec_ctl_gpio(CODEC_SET_HP,
+						      !rk312x_priv->hp_active_level);
+				break;
 			case HP_PATH:
 			case HP_NO_MIC:
 			case RING_HP:
 			case RING_HP_NO_MIC:
+				rk312x_codec_ctl_gpio(CODEC_SET_SPK,
+						      !rk312x_priv->spk_active_level);
+				rk312x_codec_ctl_gpio(CODEC_SET_HP,
+						      rk312x_priv->hp_active_level);
+				break;
 			case SPK_HP:
 			case RING_SPK_HP:
 				rk312x_codec_ctl_gpio(CODEC_SET_SPK,
@@ -1741,26 +1765,20 @@ static struct rk312x_reg_val_typ playback_power_up_list[] = {
 	{0xa8, 0x44},
 	{0xa8, 0x55},
 
-	{0xb0, 0x82},
-	{0xb0, 0xc3},
+	{0xb0, 0x90},
+	{0xb0, 0xd8},
 
 	{0xa4, 0x88},
 	{0xa4, 0xcc},
 	{0xa4, 0xee},
 	{0xa4, 0xff},
 
-	/* {0xa8, 0x44}, */
-	/* {0xb0, 0x92}, */
-	/* {0xb0, 0xdb}, */
 	{0xac, 0x11}, /*DAC*/
-	/* {0xa8, 0x55}, */
 	{0xa8, 0x77},
-
-	{0xb0, 0xee},
+	{0xb0, 0xfc},
 
 	{0xb4, OUT_VOLUME},
 	{0xb8, OUT_VOLUME},
-	/* {0xb0, 0xff}, */
 	{0xb0, 0xff},
 	{0xa0, 0x73|0x08},
 };
@@ -1857,6 +1875,7 @@ static int rk312x_codec_power_up(int type)
 		for (i = 0; i < RK312x_CODEC_PLAYBACK_POWER_UP_LIST_LEN; i++) {
 			snd_soc_write(codec, playback_power_up_list[i].reg,
 				      playback_power_up_list[i].value);
+			usleep_range(1000, 1100);
 		}
 	} else if (type == RK312x_CODEC_CAPTURE) {
 		if (rk312x_priv->rk312x_for_mid == 1) {

@@ -195,7 +195,7 @@
 
 	arm-pmu {
 		compatible = "arm,cortex-a7-pmu";
-		interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
 	timer {
@@ -229,7 +229,8 @@
 		rockchip,clocks-init-parent =
 			<&aclk_bus_pre &clk_gpll>, <&aclk_peri &clk_gpll>,
 			<&clk_emmc &clk_gpll>, <&clk_sdio &clk_gpll>,
-			<&hdmiphy &hdmiphy_pll>, <&usb480m &usbphy_480m>;
+			<&hdmiphy &hdmiphy_pll>, <&usb480m &usbphy_480m>,
+			<&clk_mac_pll &clk_apll>;
 		rockchip,clocks-init-rate =
 			<&clk_gpll 1188000000>, <&clk_core 800000000>,
 			<&clk_dsp 396000000>, <&aclk_bus_pre 150000000>,
@@ -244,7 +245,7 @@
 			<&clk_nandc 150000000>, <&clk_i2s0_pll 594000000>,
 			<&clk_i2s1_pll 594000000>, <&clk_i2s2_pll 594000000>,
 			<&clk_uart0_pll 297000000>, <&clk_uart1_pll 297000000>,
-			<&clk_uart2_pll 297000000>;
+			<&clk_uart2_pll 297000000>, <&clk_rga 300000000>;
 		rockchip,clocks-uboot-has-init =
 			<&dclk_vop_pll>;
 		rockchip,set_div_for_pll_init;
@@ -367,15 +368,23 @@
 				clk_ddr_dvfs_table: clk_ddr {
 					operating-points = <
 						/* KHz    uV */
-						400000 925000
-						600000 1000000
-						800000 1050000
+						400000 975000
+						600000 1100000
+						800000 1150000
 						>;
 					freq-table = <
 						/*status		freq(KHz)*/
 						SYS_STATUS_LOW_POWER	400000
 						SYS_STATUS_NORMAL	600000
 						SYS_STATUS_PERFORMANCE	800000
+						>;
+					lkg_adjust_volt_en = <1>;
+					channel = <0>;
+					def_table_lkg = <6>;
+					min_adjust_freq = <300000>;
+					lkg_adjust_volt_table = <
+						/*lkg(mA)  volt(uV)*/
+						60         50000
 						>;
 					status = "okay";
 				};
@@ -1049,6 +1058,15 @@
 		status = "disabled";
 	};
 
+	nandc: nandc@30100000 {
+		compatible = "rockchip,nandc";
+		reg = <0x30100000 0x1000>;
+		interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_nandc>, <&clk_gates15 3>, <&clk_gates5 3>;
+		clock-names = "clk_nandc", "hclk_nandc", "g_clk_nandc";
+		status = "disabled";
+	};
+
 	emmc: rksdmmc@30110000 {
 		compatible = "rockchip,rk_mmc", "rockchip,rv1108-sdmmc";
 		reg = <0x30110000 0x10000>;
@@ -1060,7 +1078,7 @@
 		num-slots = <1>;
 		fifo-depth = <0x100>;
 		bus-width = <8>;
-		tune_regsbase = <0x1ec>;
+		tune_regsbase = <0x1e8>;
 		resets = <&reset RV1108_RST_EMMC_H>;
 		reset-names = "mmc_ahb_reset";
 		status = "disabled";
@@ -1080,7 +1098,7 @@
 		num-slots = <1>;
 		fifo-depth = <0x100>;
 		bus-width = <4>;
-		tune_regsbase = <0x1e4>;
+		tune_regsbase = <0x1e0>;
 		resets = <&reset RV1108_RST_SDIO_H>;
 		reset-names = "mmc_ahb_reset";
 		status = "disabled";
@@ -1094,13 +1112,14 @@
 		#size-cells = <0>;
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_dectn &sdmmc_bus4 &sdmmc_pwren>;
-		pinctrl-1 = <&sdmmc_gpio>;
+		pinctrl-1 = <&sdmmc_gpio &sdmmc_dectn &sdmmc_pwren>;
 		cd-gpios = <&gpio0 GPIO_A1 GPIO_ACTIVE_HIGH>; /* CD GPIO */
 		clocks = <&clk_sdmmc>, <&clk_gates15 0>;
 		clock-names = "clk_mmc", "hclk_mmc";
 		num-slots = <1>;
 		fifo-depth = <0x100>;
 		bus-width = <4>;
+		tune_regsbase = <0x1d8>;
 		resets = <&reset RV1108_RST_SDMMC_H>;
 		reset-names = "mmc_ahb_reset";
 		status = "disabled";
@@ -1639,14 +1658,12 @@
 			};
 
 			sdmmc_gpio: sdmmc-gpio {
-				rockchip,pins = <3 GPIO_C4 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<3 GPIO_C5 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<0 GPIO_A1 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<3 GPIO_B7 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<3 GPIO_C3 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<3 GPIO_C2 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<3 GPIO_C1 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>,
-						<3 GPIO_C0 RK_FUNC_GPIO &pcfg_pull_up_drv_4ma>;
+				rockchip,pins = <3 GPIO_C4 RK_FUNC_GPIO &pcfg_pull_down>,
+						<3 GPIO_C5 RK_FUNC_GPIO &pcfg_pull_down>,
+						<3 GPIO_C3 RK_FUNC_GPIO &pcfg_pull_down>,
+						<3 GPIO_C2 RK_FUNC_GPIO &pcfg_pull_down>,
+						<3 GPIO_C1 RK_FUNC_GPIO &pcfg_pull_down>,
+						<3 GPIO_C0 RK_FUNC_GPIO &pcfg_pull_down>;
 			};
 		};
 
@@ -1851,12 +1868,10 @@
 
 		cam_pins {
 			cam0_default_pins: cam0-default-pins {
-				rockchip,pins = <3 GPIO_B0 RK_FUNC_1 &pcfg_pull_none>,
-						<3 GPIO_B5 RK_FUNC_1 &pcfg_pull_none>;
+				rockchip,pins = <3 GPIO_B5 RK_FUNC_1 &pcfg_pull_none>;
 			};
 			cam0_sleep_pins: cam0-sleep-pins {
-				rockchip,pins = <3 GPIO_B0 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_B5 RK_FUNC_GPIO &pcfg_pull_none>;
+				rockchip,pins = <3 GPIO_B5 RK_FUNC_GPIO &pcfg_pull_none>;
 			};
 		};
 
@@ -1905,23 +1920,17 @@
 			cif_dvp_clk_in_sleep: cif-dvp-clk-in-sleep {
 				rockchip,pins = <3 GPIO_C7 RK_FUNC_GPIO &pcfg_pull_none>;
 			};
-			cif_dvp_sleep: cif-dvp-sleep {
-				rockchip,pins = <2 GPIO_C5 RK_FUNC_GPIO &pcfg_pull_none>,
-						<2 GPIO_C6 RK_FUNC_GPIO &pcfg_pull_none>,
-						<1 GPIO_C6 RK_FUNC_GPIO &pcfg_pull_none>,
-						<1 GPIO_C7 RK_FUNC_GPIO &pcfg_pull_none>,
-						<2 GPIO_C0 RK_FUNC_GPIO &pcfg_pull_none>,
-						<2 GPIO_C1 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_D3 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_D4 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_D5 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_D6 RK_FUNC_GPIO &pcfg_pull_none>,
-						<2 GPIO_C3 RK_FUNC_GPIO &pcfg_pull_none>,
-						<2 GPIO_C4 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_D0 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_C6 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_D2 RK_FUNC_GPIO &pcfg_pull_none>,
-						<3 GPIO_C7 RK_FUNC_GPIO &pcfg_pull_none>;
+			cif_dvp_d10d11_sleep: cif-dvp-d10d11-sleep {
+				rockchip,pins = <3 GPIO_D5 RK_FUNC_GPIO &pcfg_pull_none>,
+						<3 GPIO_D6 RK_FUNC_GPIO &pcfg_pull_none>;
+			};
+			cif_dvp_d0d1_sleep: cif-dvp-d0d1-sleep {
+				rockchip,pins = <2 GPIO_C3 RK_FUNC_GPIO &pcfg_pull_none>,
+						<2 GPIO_C4 RK_FUNC_GPIO &pcfg_pull_none>;
+			};
+			cif_dvp_sync_sleep: cif-dvp-sync-sleep {
+				rockchip,pins = <3 GPIO_D0 RK_FUNC_GPIO &pcfg_pull_none>,
+						<3 GPIO_C6 RK_FUNC_GPIO &pcfg_pull_none>;
 			};
 		};
 	};

@@ -82,7 +82,7 @@
 	};
 
 	chosen {
-		bootargs = "rockchip_jtag noinitrd root=/dev/rootfs rootfstype=squashfs";
+		bootargs = "rockchip_jtag noinitrd root=/dev/mtdblock3 rootfstype=squashfs";
 	};
 
 	ion {
@@ -99,7 +99,7 @@
 		ion_cma: rockchip,ion-heap@4 { /* CMA HEAP */
 			compatible = "rockchip,ion-heap";
 			rockchip,ion_heap = <4>;
-			reg = <0x00000000 0x04000000>; /* 64MB */
+			reg = <0x00000000 0x04400000>; /* 68MB */
 		};
 		rockchip,ion-heap@0 { /* VMALLOC HEAP */
 			compatible = "rockchip,ion-heap";
@@ -170,6 +170,61 @@
 		rockchip,motor-id = <2>;
 		status = "okay";
 	};
+
+	ipc_leds {
+		compatible = "gpio-leds";
+		led0 {
+			label = "led0";
+			gpios = <&rk805 0 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+		led1 {
+			label = "led1";
+			gpios = <&rk805 1 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+	};
+};
+
+/*
+ * clk_mac_pll can be selected from apll/gpll.
+ *
+ * to use one of these, we should modify
+ * 'rockchip,clocks-init-parent' and
+ * 'rockchip,clocks-init-rate' as follows:
+ *
+ * from apll:
+ * 1, <&clk_mac_pll &clk_apll>;
+ *
+ * from gpll:
+ * 1, <&clk_mac_pll &clk_gpll>;
+ * 2, <&clk_gpll 1200000000>
+ *
+ * note:
+ * if gpll use 1200Mhz, hdmi function is unable to used
+ * and should be disabled.
+ */
+&rockchip_clocks_init {
+	rockchip,clocks-init-parent =
+		<&aclk_bus_pre &clk_gpll>, <&aclk_peri &clk_gpll>,
+		<&clk_emmc &clk_gpll>, <&clk_sdio &clk_gpll>,
+		<&hdmiphy &hdmiphy_pll>, <&usb480m &usbphy_480m>,
+		<&clk_mac_pll &clk_apll>;
+	rockchip,clocks-init-rate =
+		<&clk_gpll 1188000000>, <&clk_core 800000000>,
+		<&clk_dsp 396000000>, <&aclk_bus_pre 150000000>,
+		<&hclk_bus_pre 150000000>, <&pclk_bus_pre 75000000>,
+		<&aclk_peri 150000000>, <&hclk_peri 150000000>,
+		<&pclk_peri 75000000>, <&aclk_vio0_pre 300000000>,
+		<&aclk_vio1_pre 300000000>, <&hclk_vio_pre 75000000>,
+		<&pclk_vio_pre 75000000>, <&aclk_rkvdec_pre 300000000>,
+		<&aclk_vpu_pre 300000000>, <&clk_hevc_cabac 300000000>,
+		<&clk_hevc_core 300000000>, <&aclk_rkvenc_pre 300000000>,
+		<&clk_venc_core 300000000>, <&clk_crypto 150000000>,
+		<&clk_nandc 150000000>, <&clk_i2s0_pll 594000000>,
+		<&clk_i2s1_pll 594000000>, <&clk_i2s2_pll 594000000>,
+		<&clk_uart0_pll 297000000>, <&clk_uart1_pll 297000000>,
+		<&clk_uart2_pll 297000000>, <&clk_rga 300000000>;
 };
 
 &clk_core_dvfs_table {
@@ -342,7 +397,7 @@
 &camera2 {
 	rockchip,camera-ircut = <&cam_ircut0>;
 	rockchip,camera-ls = <&light_sensor0>;
-	rockchip,camera-ls-range = <0 700 800 1024>;
+	rockchip,camera-ls-range = <0 750 950 1024>;
 };
 
 &cif1to4 {
@@ -416,7 +471,6 @@
 	ignore-pm-notify;
 	keep-power-in-suspend;
 	power-inverted;
-	pwr-gpios = <&gpio3 GPIO_B7 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
@@ -511,6 +565,7 @@
 
 &codec {
 	spk_ctl_io = <&gpio0 GPIO_C4 GPIO_ACTIVE_HIGH>;
+	rockchip,single-ended = <1>;
 	status = "okay";
 };
 

@@ -539,7 +539,7 @@ static void dw_mci_edmac_start_dma(struct dw_mci *host, unsigned int sg_len)
 	int ret = 0;
 
 	/* Set external dma config: burst size, burst width*/
-	slave_config.dst_addr = (dma_addr_t)(host->phy_regs + host->data_offset);
+	slave_config.dst_addr = host->phy_regs + host->data_offset;
 	slave_config.src_addr = slave_config.dst_addr;
 	slave_config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
 	slave_config.src_addr_width = slave_config.dst_addr_width;
@@ -1428,9 +1428,22 @@ EXIT_POWER:
 			regs |= (1 << slot->id);
 
 		mci_writel(slot->host, PWREN, regs);
+
+		if ((mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) &&
+		    !IS_ERR(host->pins_default) && cpu_is_rv110x()) {
+			if (pinctrl_select_state(host->pinctrl,
+						 host->pins_default) < 0)
+				dev_err(host->dev, "pins_default pinctrl setting failed\n");
+		}
 		break;
 	case MMC_POWER_OFF:
 	/* Power down slot */
+		if ((mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) &&
+		    !IS_ERR(host->pins_idle) && cpu_is_rv110x()) {
+			if (pinctrl_select_state(host->pinctrl,
+						 host->pins_idle) < 0)
+				dev_err(host->dev, "pins_idle pinctrl setting failed\n");
+		}
 		if(slot->host->pdata->setpower)
 			slot->host->pdata->setpower(slot->id, 0);
 		regs = mci_readl(slot->host, PWREN);

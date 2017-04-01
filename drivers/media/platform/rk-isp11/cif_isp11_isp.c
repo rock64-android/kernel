@@ -330,13 +330,15 @@ static int cifisp_module_enable(struct cif_isp11_isp_dev *isp_dev,
 		goto end;
 	}
 
-	if (CIFISP_MODULE_IS_EN(*curr_ens, module) != *value) {
+	if ((CIFISP_MODULE_IS_EN(*curr_ens, module) != *value) ||
+		CIFISP_MODULE_IS_UPDATE(*updates, module)) {
 		if (*value)
 			CIFISP_MODULE_EN(*new_ens, module);
 		else
 			CIFISP_MODULE_DIS(*new_ens, module);
 
 		CIFISP_MODULE_UPDATE(*updates, module);
+
 	}
 
 end:
@@ -561,6 +563,7 @@ static int cifisp_lsc_param(struct cif_isp11_isp_dev *isp_dev,
 	CIFISP_MODULE_UPDATE(
 		isp_dev->other_cfgs.module_updates,
 		CIFISP_MODULE_LSC);
+
 end:
 	spin_unlock_irqrestore(&isp_dev->config_lock, lock_flags);
 
@@ -2755,11 +2758,18 @@ static int cifisp_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 static int cifisp_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 {
 	struct cif_isp11_isp_dev *isp_dev = video_get_drvdata(video_devdata(file));
+	struct cif_isp11_device *cif_dev =
+		container_of(isp_dev, struct cif_isp11_device, isp_dev);
+	int ret;
 
-	int ret = videobuf_streamon(&isp_dev->vbq_stat);
-
-	if (ret == 0)
-		isp_dev->streamon = true;
+	if (CIF_ISP11_PIX_FMT_IS_RAW_BAYER(
+	cif_dev->config.isp_config.output.pix_fmt)) {
+		ret = -EPERM;
+	} else {
+		ret = videobuf_streamon(&isp_dev->vbq_stat);
+		if (ret == 0)
+			isp_dev->streamon = true;
+	}
 
 	CIFISP_DPRINT(CIFISP_DEBUG,
 		      " %s: %s: ret %d\n", ISP_VDEV_NAME, __func__, ret);
@@ -4166,10 +4176,11 @@ static inline bool cifisp_isp_isr_other_config(
 		} else
 			cifisp_lsc_end(isp_dev);
 
-		if (res)
+		if (res) {
 			CIFISP_MODULE_CLR_UPDATE(
 				isp_dev->other_cfgs.module_updates,
 				CIFISP_MODULE_LSC);
+		}
 
 		*time_left -= CIFISP_MODULE_LSC_PROC_TIME;
 		CIFISP_DPRINT(CIFISP_DEBUG,
@@ -4279,7 +4290,7 @@ static inline bool cifisp_isp_isr_other_config(
 
 		CIFISP_MODULE_CLR_UPDATE(
 			isp_dev->other_cfgs.module_updates,
-			CIFISP_MODULE_IE);
+			CIFISP_MODULE_GOC);
 
 		*time_left -= CIFISP_MODULE_GOC_PROC_TIME;
 		CIFISP_DPRINT(CIFISP_DEBUG,
