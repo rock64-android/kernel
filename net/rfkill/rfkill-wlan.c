@@ -500,14 +500,17 @@ EXPORT_SYMBOL(rockchip_wifi_power);
 extern int mmc_host_rescan(struct mmc_host *host, int val, int irq_type);
 int rockchip_wifi_set_carddetect(int val)
 {
-	if (val) {
-		rockchip_wifi_power(0);
-		mdelay(10);
-		rockchip_wifi_power(1);
-		return mmc_host_rescan(NULL, val, 1);
-	} else {
-		return mmc_host_rescan(NULL, val, 1);
-	}
+	int chip, irq_type;
+	chip = get_wifi_chip_type();
+
+	/*  irq_type : 0, oob; 1, cap-sdio-irq */
+	if (!strncmp(wifi_chip_type_string, "ap", 2) ||
+		!strncmp(wifi_chip_type_string, "rk", 2))
+		irq_type = 0;
+	else
+		irq_type = 1;
+
+	return mmc_host_rescan(NULL, val, irq_type);//NULL => SDIO host
 }
 EXPORT_SYMBOL(rockchip_wifi_set_carddetect);
 
@@ -1032,7 +1035,6 @@ static int rfkill_wlan_probe(struct platform_device *pdev)
 
     rockchip_wifi_voltage_select();
 
-	rockchip_wifi_set_carddetect(1);
 #if BCM_STATIC_MEMORY_SUPPORT
     rockchip_init_wifi_mem();
 #endif
