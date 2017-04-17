@@ -157,6 +157,7 @@ dtb-$(CONFIG_ARCH_ORION5X) += orion5x-lacie-ethernet-disk-mini-v2.dtb
 dtb-$(CONFIG_ARCH_PRIMA2) += prima2-evb.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	px3se-sdk.dtb \
+	rk3036-echo.dtb \
 	rk3036-fpga.dtb \
 	rk3036-new.dtb \
 	rk3036-rk88.dtb \
@@ -193,6 +194,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	rv1108-evb-v13.dtb \
 	rv1108-fpga.dtb \
 	rv1108-ipc-v10.dtb \
+	rv1108-ipc-emmc-v10.dtb \
 	rv1108-ketong.dtb
 dtb-$(CONFIG_ARCH_U8500) += snowball.dtb \
 	hrefprev60.dtb \
