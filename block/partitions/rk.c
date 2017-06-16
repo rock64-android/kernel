@@ -277,6 +277,7 @@ static int parse_cmdline_partitions(sector_t n,
 static void rkpart_bootmode_fixup(void)
 {
 	const char mode[] = " androidboot.mode=emmc";
+	const char sd[] = " androidboot.mode=sd";
 	const char charger[] = " androidboot.charger.emmc=1";
 	char *new_command_line;
 	size_t saved_command_line_len = strlen(saved_command_line);
@@ -284,11 +285,15 @@ static void rkpart_bootmode_fixup(void)
 	if (strstr(saved_command_line, "androidboot.mode=charger")) {
 		new_command_line = kzalloc(saved_command_line_len + strlen(charger) + 1, GFP_KERNEL);
 		sprintf(new_command_line, "%s%s", saved_command_line, charger);
+	} else if(strstr(saved_command_line, "storagemedia=sd")) {
+		new_command_line = kzalloc(saved_command_line_len + strlen(sd) + 1, GFP_KERNEL);
+		sprintf(new_command_line, "%s%s", saved_command_line, sd);
 	} else {
 		new_command_line = kzalloc(saved_command_line_len + strlen(mode) + 1, GFP_KERNEL);
 		sprintf(new_command_line, "%s%s", saved_command_line, mode);
 	}
 	saved_command_line = new_command_line;
+	printk("cmdline=%s\n",saved_command_line);
 }
 
 int rkpart_partition(struct parsed_partitions *state)
@@ -323,6 +328,7 @@ int rkpart_partition(struct parsed_partitions *state)
 				(u64)parts[i].from * 512,
 				(u64)(parts[i].from + parts[i].size) * 512,
 				(u64)parts[i].size / 2048);
+	printk("TTTTTTTTTTTTTTT\n");
 	}
 
 	rkpart_bootmode_fixup();
