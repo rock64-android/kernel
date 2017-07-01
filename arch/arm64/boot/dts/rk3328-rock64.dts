@@ -193,3 +193,15 @@
 		>;
 };
 
+&fb {
+	status = "okay";
+	rockchip,disp-mode = <NO_DUAL>;
+	rockchip,disp-policy = <DISPLAY_POLICY_BOX>;
+	rockchip,uboot-logo-on = <1>;
+};
+
+&disp_timings {
+	// timing0 is 1280x720p60
+	// timing1 is 1920x1080p60
+	native-mode = <&timing1>;
+};
