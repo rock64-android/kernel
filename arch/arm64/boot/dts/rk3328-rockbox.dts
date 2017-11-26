@@ -1,0 +1,192 @@
+/*
+ * Copyright (c) 2016 Fuzhou Rockchip Electronics Co., Ltd
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This library is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This library is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+#include "rk3328.dtsi"
+#include "rk3328-evb.dtsi"
+#include "rk-stb-keymap.dtsi"
+
+/ {
+	io-domains {
+		vccio4-supply = <&rk805_dcdc4_reg>;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		power-green {
+		        gpios = <&rk805 0 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
+			default-state = "on";
+			mode = <0x23>;
+		};
+
+		net-green {
+			gpios = <&rk805 1 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
+			default-state = "off";
+			mode = <0x05>;
+		};
+
+		ir {
+			/* gpios = <&gpio2 GPIO_C2 GPIO_ACTIVE_HIGH>; */
+			linux,default-trigger = "ir";
+			default-state = "off";
+			mode = <0x00>;
+		};
+	};
+	wireless-wlan {
+            compatible = "wlan-platdata";
+            wifi_chip_type = "rtl8189es";
+                 sdio_vref = <1800>;
+                  WIFI,poweren_gpio = <&gpio1 GPIO_C2 GPIO_ACTIVE_HIGH>;
+                  WIFI,host_wake_irq = <&gpio1 GPIO_C3 GPIO_ACTIVE_HIGH>;
+                  status = "okay";
+	};
+
+	wireless-bluetooth {
+		status = "disabled";
+	};
+};
+
+&clk_core_dvfs_table {
+	operating-points = <
+		/* KHz	uV */
+		408000	950000
+		600000	950000
+		816000	1000000
+		1008000	1100000
+		1200000	1225000
+		1296000	1300000
+		1392000	1350000
+		1512000	1350000
+		>;
+	status = "okay";
+};
+
+&sdio {
+	status = "okay";
+};
+
+&spdif {
+	pinctrl-0 = <&spdifm0_tx>;
+	status = "okay";
+};
+&usb2_otg {
+	/* 0 - Normal, 1 - Force Host, 2 - Force Device */
+	rockchip,usb-mode = <1>;
+};
+&pwm3 {
+	/* for IPTV */
+	ir_key2{
+		rockchip,usercode = <0xff00>;
+		rockchip,key_table =
+		<0xa8  KEY_POWER>,
+		<0xa4  KEY_MUTE>,
+		<0xfd  KEY_REPLY>,
+		<0xf0  KEY_VOLUMEDOWN>,
+		<0xb3  KEY_VOLUMEUP>,
+		<0xb0  KEY_HOME>,
+		<0xe5  KEY_BACK>,
+		<0xbc  KEY_UP>,
+		<0xf5  KEY_DOWN>,
+		<0XF9  KEY_LEFT>,
+		<0XF1  KEY_RIGHT>,
+		<0XB1  KEY_MENU>,
+		<0XB2  388>,//mouse
+		<0XEF  KEY_1>,
+		<0XEE  KEY_2>,
+		<0XED  KEY_3>,
+		<0XEC  KEY_4>,
+		<0XEB  KEY_5>,
+		<0XEA  KEY_6>,
+		<0XE8  KEY_7>,
+		<0XE7  KEY_8>,
+		<0XE6  KEY_9>,
+		<0XE2  KEY_0>,
+		<0xa5  KEY_F1>, //media center
+		<0xad  KEY_F2>, //KEY_BROSE
+		<0xaf  KEY_F3>,//KEY_FILE_EXPLORE
+		<0xa7  KEY_F4>,//KEY_MEDIA_PREVIOUS
+		<0xe4  KEY_F5>,//KEY_MEDIA_NEXT
+		<0XE3  KEY_F6>,//KEY_ALLAPP
+		<0XE1  KEY_F7>,//KEY_DEL
+		<0xE9  KEY_PLAYPAUSE>;
+	};
+	/* rk new remote */
+	ir_key6 {
+		rockchip,usercode = <0xfe01>;
+		rockchip,key_table =
+		<0xbf  KEY_POWER>,
+		<0xbe  KEY_MUTE>,
+		<0xec  KEY_REPLY>,
+		<0xef  KEY_VOLUMEDOWN>,
+		<0xe7  KEY_VOLUMEUP>,
+		<0xee  KEY_HOME>,
+		<0xe6  KEY_BACK>,
+		<0xe9  KEY_UP>,
+		<0xe5  KEY_DOWN>,
+		<0xae  KEY_LEFT>,
+		<0xaf  KEY_RIGHT>,
+		<0xb3  KEY_MENU>,
+		<0xff  388>,//mouse
+		<0xb1  KEY_1>,
+		<0xf2  KEY_2>,
+		<0xf3  KEY_3>,
+		<0xb5  KEY_4>,
+		<0xf6  KEY_5>,
+		<0xf7  KEY_6>,
+		<0xb9  KEY_7>,
+		<0xfa  KEY_8>,
+		<0xfb  KEY_9>,
+		<0xfe  KEY_0>,
+		<0xaa  KEY_F1>, //<<
+		<0xa5  KEY_F2>, //>||
+		<0xad  KEY_F3>,//KEY_FILE_EXPLORE
+		<0xab  KEY_F4>,//KEY_MEDIA_PREVIOUS
+		<0xbc  KEY_F5>,//KEY_MEDIA_NEXT
+		<0xf0  KEY_F6>,//KEY_ALLAPP
+		<0xbd  KEY_F7>,//KEY_DEL
+		<0xbb  KEY_F8>; //KEY_KODI
+	};
+};
+
